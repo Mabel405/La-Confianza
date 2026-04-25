@@ -39,14 +39,40 @@ class compraController extends Controller
     /**
      * Show the form for creating a new resource.
      */
+    
     public function create()
     {
         $proveedores = Proveedore::whereHas('persona', function($query){
-            $query->where('estado',1);
+            $query->where('estado', 1);
         })->get();
+     
         $comprobantes = Comprobante::all();
-        $productos = Producto::where('estado',1)->get();
-        return view('compra.create', compact('proveedores','comprobantes','productos'));
+        $productos    = Producto::where('estado', 1)->get();
+     
+        $prefijo = 'B001';
+     
+        
+        $ultima = Compra::where('numero_comprobante', 'like', $prefijo . '-%')
+                        ->orderByDesc('numero_comprobante')
+                        ->value('numero_comprobante');
+        
+     
+        if ($ultima) {
+            
+            $numero = (int) explode('-', $ultima)[1] + 1;
+        } else {
+            $numero = 1;
+        }
+     
+        
+        $siguienteComprobante = $prefijo . '-' . str_pad($numero, 4, '0', STR_PAD_LEFT);
+     
+        return view('compra.create', compact(
+            'proveedores',
+            'comprobantes',
+            'productos',
+            'siguienteComprobante'   
+        ));
     }
 
 
