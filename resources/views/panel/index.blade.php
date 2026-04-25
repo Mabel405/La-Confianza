@@ -537,31 +537,217 @@
     </div>
 
     <!-- Actividad Reciente -->
-    <div class="row mt-5">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header">
-                    <h4><i class="fas fa-clock me-2"></i>Actividad Reciente</h4>
+    @php
+    // Ventas por mes — últimos 7 meses
+    $grafVentasMes = collect(range(6, 0))->map(fn($i) => [
+        'label' => now()->subMonths($i)->translatedFormat('M'),
+        'total' => \App\Models\Venta::where('estado', 1)
+                    ->whereYear('created_at',  now()->subMonths($i)->year)
+                    ->whereMonth('created_at', now()->subMonths($i)->month)
+                    ->count(),
+    ]);
+    
+    // Compras vs Ventas — últimos 6 meses
+    $grafCvsV = collect(range(5, 0))->map(fn($i) => [
+        'label'   => now()->subMonths($i)->translatedFormat('M y'),
+        'ventas'  => \App\Models\Venta::where('estado', 1)
+                        ->whereYear('created_at',  now()->subMonths($i)->year)
+                        ->whereMonth('created_at', now()->subMonths($i)->month)
+                        ->count(),
+        'compras' => \App\Models\Compra::where('estado', 1)
+                        ->whereYear('created_at',  now()->subMonths($i)->year)
+                        ->whereMonth('created_at', now()->subMonths($i)->month)
+                        ->count(),
+    ]);
+    
+    // Top 5 productos más vendidos
+    
+    $grafTopProductos = \App\Models\Producto::where('estado', 1)
+        ->withCount(['ventas as vendidos'])
+        ->orderByDesc('vendidos')
+        ->limit(5)
+        ->get()
+        ->map(fn($p) => [
+            'nombre'   => \Str::limit($p->nombre, 20),
+            'vendidos' => (int) $p->vendidos,
+        ]);
+    
+    // Distribución de productos por categoría
+    
+    $grafCategorias = \App\Models\Categoria::whereHas('caracteristica', fn($q) => $q->where('estado', 1))
+        ->withCount(['productos as total' => fn($q) => $q->where('estado', 1)])
+        ->having('total', '>', 0)
+        ->orderByDesc('total')
+        ->limit(6)
+        ->get()
+        ->map(fn($c) => [
+            'nombre' => \Str::limit($c->caracteristica->nombre ?? 'Sin nombre', 16),
+            'total'  => (int) $c->total,
+        ]);
+    @endphp
+    
+
+<style>
+    .graf-section        { margin-top: 2.5rem; }
+    .graf-heading        { font-size: .8rem; font-weight: 600; color: #64748b;
+                           text-transform: uppercase; letter-spacing: .06em;
+                           margin-bottom: 1.1rem; display: flex; align-items: center; gap: 8px; }
+    .graf-heading::before{ content:''; width:3px; height:14px; background:#dc2626;
+                           border-radius:0; display:inline-block; }
+    .graf-grid           { display: grid; grid-template-columns: repeat(2,1fr); gap: 14px; }
+    @media(max-width:860px){ .graf-grid{ grid-template-columns:1fr; } }
+
+    .graf-card           { background:#fff; border:1px solid #e2e8f0; border-radius:12px;
+                           overflow:hidden; transition:box-shadow .18s; }
+    .graf-card:hover     { box-shadow:0 4px 16px rgba(0,0,0,.07); }
+    .graf-card-head      { display:flex; align-items:center; gap:9px; padding:12px 16px;
+                           border-bottom:1px solid #f1f5f9; }
+    .gc-icon             { width:28px; height:28px; border-radius:7px; flex-shrink:0;
+                           display:flex; align-items:center; justify-content:center; }
+    .gc-icon svg         { width:14px; height:14px; }
+    .gc-title            { font-size:.75rem; font-weight:600; color:#0f172a; flex:1;
+                           text-transform:uppercase; letter-spacing:.04em; }
+    .gc-badge            { font-size:.68rem; padding:2px 9px; border-radius:20px; font-weight:500; }
+    .graf-card-body      { padding:14px 16px; }
+    .graf-canvas-wrap    { position:relative; width:100%; }
+    .graf-legend         { display:flex; flex-wrap:wrap; gap:6px 12px; margin-bottom:10px;
+                           font-size:.72rem; color:#64748b; }
+    .graf-legend-item    { display:flex; align-items:center; gap:4px; }
+    .graf-legend-sq      { width:9px; height:9px; border-radius:2px; flex-shrink:0; }
+    .graf-empty          { display:flex; align-items:center; justify-content:center;
+                           height:160px; color:#94a3b8; font-size:.8rem; }
+</style>
+
+<div class="graf-section">
+    <div class="graf-heading">Estadísticas y análisis</div>
+
+    <div class="graf-grid">
+
+        {{-- 1. Ventas por mes --}}
+        <div class="graf-card">
+            <div class="graf-card-head">
+                <div class="gc-icon" style="background:#ECFDF5">
+                    <svg viewBox="0 0 16 16" fill="none" stroke="#059669" stroke-width="1.6" stroke-linecap="round">
+                        <path d="M2 12l3-5 3 2 3-4 3 3"/>
+                    </svg>
                 </div>
-                <div class="card-body">
-                    <ul class="list-group list-group-flush">
-                        <li class="list-group-item">
-                            🧾 Última venta: {{ $ultimaVenta?->created_at ?? 'Sin registros' }}
-                        </li>
-                        <li class="list-group-item">
-                            📦 Último producto: {{ $ultimoProducto?->nombre ?? 'Sin registros' }}
-                        </li>
-                        <li class="list-group-item">
-                            👤 Último cliente: {{ $ultimoCliente?->nombre ?? 'Sin registros' }}
-                        </li>
-                        <li class="list-group-item">
-                            🏭 Último proveedor: {{ $ultimoProveedor?->nombre ?? 'Sin registros' }}
-                        </li>
-                    </ul>
+                <span class="gc-title">Ventas por mes</span>
+                <span class="gc-badge" style="background:#ECFDF5;color:#065F46">7 meses</span>
+            </div>
+            <div class="graf-card-body">
+                @if($grafVentasMes->sum('total') > 0)
+                    <div class="graf-canvas-wrap" style="height:195px">
+                        <canvas id="grafVM"></canvas>
+                    </div>
+                @else
+                    <div class="graf-empty">Sin datos de ventas aún</div>
+                @endif
+            </div>
+        </div>
+
+        {{-- 2. Compras vs Ventas --}}
+        <div class="graf-card">
+            <div class="graf-card-head">
+                <div class="gc-icon" style="background:#EFF6FF">
+                    <svg viewBox="0 0 16 16" fill="none" stroke="#2563eb" stroke-width="1.6" stroke-linecap="round">
+                        <rect x="2" y="8" width="3" height="6" rx="1"/>
+                        <rect x="6.5" y="5" width="3" height="9" rx="1"/>
+                        <rect x="11" y="2" width="3" height="12" rx="1"/>
+                    </svg>
+                </div>
+                <span class="gc-title">Compras vs ventas</span>
+                <span class="gc-badge" style="background:#EFF6FF;color:#1D4ED8">6 meses</span>
+            </div>
+            <div class="graf-card-body">
+                <div class="graf-legend">
+                    <span class="graf-legend-item">
+                        <span class="graf-legend-sq" style="background:#059669"></span>Ventas
+                    </span>
+                    <span class="graf-legend-item">
+                        <span class="graf-legend-sq" style="background:#2563eb"></span>Compras
+                    </span>
+                </div>
+                <div class="graf-canvas-wrap" style="height:168px">
+                    <canvas id="grafCV"></canvas>
                 </div>
             </div>
         </div>
+
+        {{-- 3. Top 5 productos --}}
+        <div class="graf-card">
+            <div class="graf-card-head">
+                <div class="gc-icon" style="background:#FFF7ED">
+                    <svg viewBox="0 0 16 16" fill="none" stroke="#d97706" stroke-width="1.6" stroke-linecap="round">
+                        <path d="M8 2l1.5 4.5H14l-3.5 2.5 1.5 4.5L8 11l-4 2.5 1.5-4.5L2 6.5h4.5z"/>
+                    </svg>
+                </div>
+                <span class="gc-title">Top 5 productos</span>
+                <span class="gc-badge" style="background:#FFF7ED;color:#92400E">Más vendidos</span>
+            </div>
+            <div class="graf-card-body">
+                @if($grafTopProductos->isNotEmpty())
+                    <div class="graf-canvas-wrap" style="height:195px">
+                        <canvas id="grafTP"></canvas>
+                    </div>
+                @else
+                    <div class="graf-empty">Sin ventas registradas aún</div>
+                @endif
+            </div>
+        </div>
+
+        {{-- 4. Donut por categoría --}}
+        <div class="graf-card">
+            <div class="graf-card-head">
+                <div class="gc-icon" style="background:#F5F3FF">
+                    <svg viewBox="0 0 16 16" fill="none" stroke="#7c3aed" stroke-width="1.6" stroke-linecap="round">
+                        <circle cx="8" cy="8" r="6"/>
+                        <path d="M8 2a6 6 0 014.24 10.24"/>
+                    </svg>
+                </div>
+                <span class="gc-title">Productos por categoría</span>
+                <span class="gc-badge" style="background:#F5F3FF;color:#5B21B6">Distribución</span>
+            </div>
+            <div class="graf-card-body">
+                @if($grafCategorias->isNotEmpty())
+                    <div class="graf-legend" id="donutLegend"></div>
+                    <div class="graf-canvas-wrap" style="height:168px">
+                        <canvas id="grafDN"></canvas>
+                    </div>
+                @else
+                    <div class="graf-empty">Sin categorías con productos</div>
+                @endif
+            </div>
+        </div>
+
     </div>
+</div>
+
+@push('js')
+<script>
+    window.POS_ventasMes = {
+        labels: @json($grafVentasMes->pluck('label')),
+        data:   @json($grafVentasMes->pluck('total'))
+    };
+    window.POS_cvsv = {
+        labels:  @json($grafCvsV->pluck('label')),
+        ventas:  @json($grafCvsV->pluck('ventas')),
+        compras: @json($grafCvsV->pluck('compras'))
+    };
+    window.POS_top5 = {
+        labels: @json($grafTopProductos->pluck('nombre')),
+        data:   @json($grafTopProductos->pluck('vendidos'))
+    };
+    window.POS_categorias = {
+        labels: @json($grafCategorias->pluck('nombre')),
+        data:   @json($grafCategorias->pluck('total'))
+    };
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.8.0/Chart.min.js" crossorigin="anonymous"></script>
+<script src="{{ asset('assets/demo/chart-area-demo.js') }}"></script>
+<script src="{{ asset('assets/demo/chart-bar-demo.js') }}"></script>
+<script src="https://cdn.jsdelivr.net/npm/simple-datatables@7.1.2/dist/umd/simple-datatables.min.js" crossorigin="anonymous"></script>
+<script src="{{ asset('js/datatables-simple-demo.js') }}"></script>
+@endpush
 </div>
 @endsection
 

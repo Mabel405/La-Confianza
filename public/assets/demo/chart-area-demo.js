@@ -1,54 +1,127 @@
-// Set new default font family and font color to mimic Bootstrap's default styling
 Chart.defaults.global.defaultFontFamily = '-apple-system,system-ui,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif';
-Chart.defaults.global.defaultFontColor = '#292b2c';
+Chart.defaults.global.defaultFontColor  = '#64748b';
 
-// Area Chart Example
-var ctx = document.getElementById("myAreaChart");
-var myLineChart = new Chart(ctx, {
-  type: 'line',
-  data: {
-    labels: ["Mar 1", "Mar 2", "Mar 3", "Mar 4", "Mar 5", "Mar 6", "Mar 7", "Mar 8", "Mar 9", "Mar 10", "Mar 11", "Mar 12", "Mar 13"],
-    datasets: [{
-      label: "Sessions",
-      lineTension: 0.3,
-      backgroundColor: "rgba(2,117,216,0.2)",
-      borderColor: "rgba(2,117,216,1)",
-      pointRadius: 5,
-      pointBackgroundColor: "rgba(2,117,216,1)",
-      pointBorderColor: "rgba(255,255,255,0.8)",
-      pointHoverRadius: 5,
-      pointHoverBackgroundColor: "rgba(2,117,216,1)",
-      pointHitRadius: 50,
-      pointBorderWidth: 2,
-      data: [10000, 30162, 26263, 18394, 18287, 28682, 31274, 33259, 25849, 24159, 32651, 31984, 38451],
-    }],
-  },
-  options: {
-    scales: {
-      xAxes: [{
-        time: {
-          unit: 'date'
+
+(function () {
+    var el = document.getElementById('grafVM');
+    if (!el) return;
+
+    var src    = window.POS_ventasMes || { labels: [], data: [] };
+    var labels = src.labels;
+    var datos  = src.data;
+
+    
+    var ptColors = datos.map(function (_, i) {
+        return i === datos.length - 1 ? '#059669' : 'rgba(5,150,105,0.4)';
+    });
+
+    new Chart(el, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Ventas',
+                lineTension: 0.35,
+                backgroundColor: 'rgba(5,150,105,0.08)',
+                borderColor: '#059669',
+                borderWidth: 2,
+                pointRadius: 4,
+                pointBackgroundColor: ptColors,
+                pointBorderColor: '#fff',
+                pointBorderWidth: 2,
+                pointHoverRadius: 6,
+                pointHitRadius: 40,
+                data: datos,
+            }]
         },
-        gridLines: {
-          display: false
-        },
-        ticks: {
-          maxTicksLimit: 7
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                xAxes: [{
+                    gridLines: { display: false },
+                    ticks: { maxTicksLimit: 7, fontColor: '#94a3b8', fontSize: 11 }
+                }],
+                yAxes: [{
+                    ticks: {
+                        min: 0,
+                        maxTicksLimit: 5,
+                        fontColor: '#94a3b8',
+                        fontSize: 11,
+                        callback: function (v) { return Number.isInteger(v) ? v : null; }
+                    },
+                    gridLines: { color: 'rgba(0,0,0,0.05)' }
+                }]
+            },
+            legend: { display: false },
+            tooltips: {
+                backgroundColor: '#0f172a',
+                titleFontColor: '#fff',
+                bodyFontColor: '#94a3b8',
+                callbacks: {
+                    label: function (item) { return '  ' + item.yLabel + ' ventas'; }
+                }
+            }
         }
-      }],
-      yAxes: [{
-        ticks: {
-          min: 0,
-          max: 40000,
-          maxTicksLimit: 5
+    });
+})();
+
+
+
+(function () {
+    var el = document.getElementById('grafDN');
+    if (!el) return;
+
+    var src    = window.POS_categorias || { labels: [], data: [] };
+    var labels = src.labels;
+    var datos  = src.data;
+    var total  = datos.reduce(function (a, b) { return a + b; }, 0);
+
+    var COLORS = ['#2563eb', '#059669', '#d97706', '#dc2626', '#7c3aed', '#475569'];
+
+    new Chart(el, {
+        type: 'doughnut',
+        data: {
+            labels: labels,
+            datasets: [{
+                data: datos,
+                backgroundColor: COLORS,
+                borderWidth: 2,
+                borderColor: '#fff',
+                hoverBorderWidth: 0
+            }]
         },
-        gridLines: {
-          color: "rgba(0, 0, 0, .125)",
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutoutPercentage: 66,
+            legend: { display: false },
+            tooltips: {
+                backgroundColor: '#0f172a',
+                titleFontColor: '#fff',
+                bodyFontColor: '#94a3b8',
+                callbacks: {
+                    label: function (item, data) {
+                        var lbl = data.labels[item.index];
+                        var val = data.datasets[0].data[item.index];
+                        var pct = total > 0 ? Math.round(val / total * 100) : 0;
+                        return '  ' + lbl + ': ' + val + ' (' + pct + '%)';
+                    }
+                }
+            }
         }
-      }],
-    },
-    legend: {
-      display: false
+    });
+
+    var leg = document.getElementById('donutLegend');
+    if (leg && total > 0) {
+        labels.forEach(function (lbl, i) {
+            var pct = Math.round(datos[i] / total * 100);
+            var item = document.createElement('span');
+            item.className = 'graf-legend-item';
+            item.innerHTML =
+                '<span class="graf-legend-sq" style="background:' + COLORS[i % COLORS.length] + '"></span>' +
+                lbl + ' ' + pct + '%';
+            leg.appendChild(item);
+        });
     }
-  }
-});
+})();

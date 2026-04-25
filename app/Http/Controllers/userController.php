@@ -50,13 +50,13 @@ class UserController extends Controller
     {
         try{
             DB::beginTransaction();
-            //Encriptar contraseña
+            
             $fieldHash = Hash::make($request->password);
-            //Modificar el valor de password en nuestro request
+            
             $request->merge(['password' => $fieldHash]);
-            //crear usuario
+            
             $user = User::create($request->all());
-            //asignar su rol
+           
             $user->assignRole($request->role);
 
             DB::commit();

@@ -9,7 +9,6 @@
 @endpush
 
 @section('content')
-
 @if(session('success'))
 <script>
 let message = "{{ session('success') }}";
@@ -50,19 +49,19 @@ if (message) {
   max-width: 95vw;
 }
 
-/* Texto */
+
 .ios-toast-title-right {
-  font-size: 17px !important;
+  font-size: 17px !important; 
   font-weight: 500 !important;
   text-align: left !important;
 }
 
-/* Icono */
+
 .ios-toast-icon-right {
-  font-size: 20px !important; 
+  font-size: 20px !important;
 }
 
-/* Mobile */
+
 @media (max-width: 576px) {
   .ios-toast-right {
     margin-top: 12px;

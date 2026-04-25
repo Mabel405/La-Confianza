@@ -3,7 +3,7 @@
 @section('title', 'Crear usuario')
 
 @push('css')
-<!-- Cargamos FontAwesome para los iconos del ojo -->
+
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
 <style>
     .input-group-text {

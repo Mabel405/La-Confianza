@@ -9,29 +9,70 @@
 @endpush
 
 @section('content')
-
 @if(session('success'))
 <script>
+let message = "{{ session('success') }}";
 
-    let message ="{{ session('success') }}";
-    const Toast = Swal.mixin({
-        toast: true,
-        position: "top-end",
-        showConfirmButton: false,
-        timer: 1500,
-        timerProgressBar: true,
-        didOpen: (toast) => {
-          toast.onmouseenter = Swal.stopTimer;
-          toast.onmouseleave = Swal.resumeTimer;
-        }
-    })
+const Toast = Swal.mixin({
+  toast: true,
+  position: "top-end", 
+  showConfirmButton: false,
+  timer: 2400,
+  timerProgressBar: false,
+  background: "#f2f2f7",
+  color: "#111",
+  width: "auto",
+  padding: "18px 24px", 
+  customClass: {
+    popup: "ios-toast-right",
+    title: "ios-toast-title-right",
+    icon: "ios-toast-icon-right"
+  },
+  didOpen: (toast) => {
+    toast.addEventListener('mouseenter', Swal.stopTimer);
+    toast.addEventListener('mouseleave', Swal.resumeTimer);
+  }
+});
 
-    Toast.fire({
-      icon: "success",
-      title: message
-      
-    })
+if (message) {
+  Toast.fire({
+    icon: "success",
+    title: message
+  });
+}
 </script>
+
+<style>
+.ios-toast-right {
+  border-radius: 18px !important;
+  box-shadow: 0 10px 26px rgba(0,0,0,0.2) !important;
+  max-width: 95vw;
+}
+
+
+.ios-toast-title-right {
+  font-size: 17px !important; 
+  font-weight: 500 !important;
+  text-align: left !important;
+}
+
+
+.ios-toast-icon-right {
+  font-size: 20px !important;
+}
+
+
+@media (max-width: 576px) {
+  .ios-toast-right {
+    margin-top: 12px;
+    padding: 16px 20px;
+  }
+
+  .ios-toast-title-right {
+    font-size: 15px !important;
+  }
+}
+</style>
 @endif
 
 <div class="container-fluid px-4">
