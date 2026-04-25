@@ -179,12 +179,26 @@
                                 <small class="text-danger">{{ '*'.$message }}</small>
                             @enderror
                         </div>
-
+                        
                         <!-- Número comprobante -->
                         <div class="col-md-12 mb-2">
-                            <label for="numero_comprobante" class="form-label">Numero de comprobante:</label>
-                            <input type="text" name="numero_comprobante" id="numero_comprobante" class="form-control" required>
-                            @error ('numero_comprobante')
+                            <label for="numero_comprobante" class="form-label">
+                                Numero de comprobante:
+                            </label>
+                        
+                            {{-- Campo visible (readonly, solo informativo) --}}
+                            <input type="text"
+                                   class="form-control border-success bg-light"
+                                   value="{{ $siguienteComprobante }}"
+                                   readonly>
+                        
+                            {{-- Campo oculto que se envía en el POST --}}
+                            <input type="hidden"
+                                   name="numero_comprobante"
+                                   id="numero_comprobante"
+                                   value="{{ $siguienteComprobante }}">
+                        
+                            @error('numero_comprobante')
                                 <small class="text-danger">{{ '*'.$message }}</small>
                             @enderror
                         </div>

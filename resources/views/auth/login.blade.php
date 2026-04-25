@@ -1,367 +1,398 @@
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
-    <head>
-        <meta charset="utf-8" />
-        <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
-        <meta name="description" content="Inicio de Sesion del Sistema" />
-        <meta name="author" content="Mabel Manturano" />
-        <title>Login - Sistema Administrativo</title>
-        
-        <!-- Bootstrap 5 -->
-        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-        
-        <!-- Font Awesome -->
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-        
-        <!-- Google Fonts -->
-        <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
+<head>
+    <meta charset="utf-8"/>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"/>
+    <title>Acceso — La Confianza</title>
 
-    </head>
-    <body>
-        <div class="login-container">
-            <!-- Logo y marca -->
-            <div class="logo-container">
-                <div class="logo">
-                    <i class="fas fa-lock"></i>
-                </div>
-                <div class="brand-name">Sistema Administrativo</div>
-            </div>
-            
-            <!-- Tarjeta de login -->
-            <div class="login-card">
-                <div class="card-header">
-                    <h2>ACCESO AL SISTEMA</h2>
-                    <p>Ingresa tus credenciales para continuar</p>
-                </div>
-                
-                <div class="card-body">
-                    @if ($errors->any())
-                    @foreach ($errors->all() as $item)
-                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                        {{$item}}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                    </div>
-                    @endforeach
-                    @endif
-                    
-                    <form action="/login" method="POST">
-                        @csrf
-                        
-                        <!-- Campo de correo -->
-                        <div class="mb-4">
-                            <label for="inputEmail" class="form-label">
-                                <i class="fas fa-envelope"></i>Correo electrónico
-                            </label>
-                            <div class="input-group">
-                                <input type="email" 
-                                       class="form-control" 
-                                       name="email" 
-                                       id="inputEmail" 
-                                       placeholder="nombre@ejemplo.com"
-                                       required>
-                            </div>
-                        </div>
-                        
-                        <!-- Campo de contraseña -->
-                        <div class="mb-5">
-                            <label for="inputPassword" class="form-label">
-                                <i class="fas fa-key"></i>Contraseña
-                            </label>
-                            <div class="input-group">
-                                <input type="password" 
-                                       class="form-control" 
-                                       name="password" 
-                                       id="inputPassword" 
-                                       placeholder="Ingresa tu contraseña"
-                                       required>
-                                <button class="password-toggle" type="button" id="togglePassword">
-                                    <i class="fas fa-eye"></i>
-                                </button>
-                            </div>
-                        </div>
-                        
-                        <!-- Botón de inicio de sesión -->
-                        <div class="d-grid">
-                            <button class="btn-login" type="submit">
-                                <i class="fas fa-sign-in-alt me-2"></i>INICIAR SESIÓN
-                            </button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </div>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
     <style>
         :root {
-            --primary-color: #7c83fd;
-            --secondary-color: #a5b4fc;
-            --accent-color: #fbcfe8;
-            --bg-color: #f8fafc;
-            --card-bg: #ffffff;
-            --text-dark: #1e293b;
-            --text-muted: #64748b;
-    
-            --gradient-primary: linear-gradient(135deg, #c7d2fe 0%, #fbcfe8 100%);
-            --shadow-lg: 0 20px 40px rgba(15, 23, 42, 0.08);
-            --shadow-hover: 0 25px 60px rgba(15, 23, 42, 0.12);
-    
-            --radius-lg: 22px;
-            --radius-sm: 14px;
+            --red:       #c0392b;
+            --red-dark:  #a93226;
+            --red-light: #e74c3c;
+            --bg:        #f4f6f8;
         }
-    
-        * {
-            font-family: 'Poppins', sans-serif;
-        }
-    
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Poppins', sans-serif; }
+
         body {
-            background: var(--gradient-primary);
+            background: linear-gradient(135deg, #b71c1c 0%, #e53935 50%, #c0392b 100%);
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 20px;
+            padding: 1.5rem;
         }
-    
-        .login-container {
-            max-width: 420px;
-            width: 100%;
-        }
+
     
         .login-card {
-            background: var(--card-bg);
-            border-radius: var(--radius-lg);
-            box-shadow: var(--shadow-lg);
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            width: 100%;
+            max-width: 860px;
+            border-radius: 20px;
             overflow: hidden;
-            transition: 0.3s ease;
+            box-shadow: 0 30px 70px rgba(0,0,0,0.25);
         }
-    
-        .login-card:hover {
-            transform: translateY(-4px);
-            box-shadow: var(--shadow-hover);
+
+        @media (max-width: 680px) {
+            .login-card { grid-template-columns: 1fr; }
+            .panel-left  { display: none; }
         }
-    
-        .card-header {
-            background: linear-gradient(135deg, #eef2ff, #fdf2f8);
-            padding: 32px 28px;
-            text-align: center;
-            border-bottom: 1px solid #e2e8f0;
-        }
-    
-        .card-header h2 {
-            color: var(--text-dark);
-            font-weight: 700;
-            font-size: 2rem;
-            margin-bottom: 6px;
-        }
-    
-        .card-header p {
-            color: var(--text-muted);
-            font-size: 0.95rem;
-        }
-    
-        .card-body {
-            padding: 32px 30px;
-        }
-    
-        .form-label {
-            font-weight: 600;
-            color: var(--text-dark);
-            margin-bottom: 8px;
-            font-size: 0.95rem;
+
+        .panel-left {
+            background: var(--red);
             display: flex;
-            align-items: center;
-        }
-    
-        .form-label i {
-            margin-right: 8px;
-            color: var(--primary-color);
-        }
-    
-        .form-control {
-            padding: 14px 16px;
-            border: 1.8px solid #e5e7eb;
-            border-radius: var(--radius-sm);
-            font-size: 0.95rem;
-            background-color: #f8fafc;
-            transition: 0.2s ease;
-        }
-    
-        .form-control:focus {
-            border-color: var(--primary-color);
-            box-shadow: 0 0 0 3px rgba(124, 131, 253, 0.25);
-            background-color: white;
-        }
-    
-        .input-group {
-            border-radius: var(--radius-sm);
-            overflow: hidden;
-        }
-    
-        .password-toggle {
-            background: #f8fafc;
-            border: 1.8px solid #e5e7eb;
-            border-left: none;
-            padding: 0 16px;
-            color: #64748b;
-        }
-    
-        .password-toggle:hover {
-            color: var(--primary-color);
-        }
-    
-        .btn-login {
-            background: linear-gradient(135deg, #a5b4fc, #fbcfe8);
-            border: none;
-            color: #1e293b;
-            padding: 14px;
-            font-size: 0.95rem;
-            font-weight: 600;
-            border-radius: var(--radius-sm);
-            letter-spacing: 0.5px;
-            transition: 0.3s ease;
-        }
-    
-        .btn-login:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 20px rgba(124, 131, 253, 0.25);
-        }
-    
-        .alert-danger {
-            background: #fef2f2;
-            color: #b91c1c;
-            border-left: 4px solid #f87171;
-        }
-    
-        .logo-container {
-            text-align: center;
-            margin-bottom: 24px;
-        }
-    
-        .logo {
-            width: 68px;
-            height: 68px;
-            border-radius: 50%;
-            background: white;
-            display: flex;
+            flex-direction: column;
             align-items: center;
             justify-content: center;
-            margin: 0 auto 10px;
-            box-shadow: 0 10px 20px rgba(15, 23, 42, 0.12);
+            padding: 3rem 2rem;
+            gap: 1.5rem;
+            position: relative;
+            overflow: hidden;
         }
-    
-        .logo i {
-            font-size: 1.8rem;
-            color: #7c83fd;
+
+        .panel-left::before {
+            content: '';
+            position: absolute;
+            top: -80px; right: -80px;
+            width: 260px; height: 260px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.07);
         }
-    
-        .brand-name {
-            font-weight: 700;
-            font-size: 1.1rem;
-            color: white;
-            letter-spacing: 1px;
+        .panel-left::after {
+            content: '';
+            position: absolute;
+            bottom: -60px; left: -60px;
+            width: 200px; height: 200px;
+            border-radius: 50%;
+            background: rgba(0,0,0,0.08);
         }
-    
-    
-    
-        @media (max-width: 576px) {
-            body {
-                padding: 10px;
-            }
-    
-            .login-container {
-                max-width: 100%;
-            }
-    
-            .card-header h2 {
-                font-size: 1.5rem;
-            }
-    
-            .card-body {
-                padding: 22px 20px;
-            }
-    
-            .btn-login {
-                font-size: 0.9rem;
-                padding: 12px;
-            }
-    
-            .logo {
-                width: 56px;
-                height: 56px;
-            }
-    
-            .logo i {
-                font-size: 1.5rem;
-            }
-    
-            .brand-name {
-                font-size: 1rem;
-            }
+
+        .brand-logo { position: relative; z-index: 1; }
+        .brand-logo svg { width: 120px; height: auto; filter: drop-shadow(0 8px 24px rgba(0,0,0,0.3)); }
+
+        .brand-text {
+            position: relative; z-index: 1;
+            text-align: center;
         }
-    
-        @media (max-height: 700px) {
-            body {
-                align-items: flex-start;
-            }
+        .brand-text h2 {
+            font-size: 1.5rem; font-weight: 700;
+            color: #fff; letter-spacing: 0.3px; line-height: 1.2;
+        }
+        .brand-text p {
+            font-size: 0.72rem; color: rgba(255,255,255,0.75);
+            text-transform: uppercase; letter-spacing: 2.5px; margin-top: 5px;
+        }
+
+        .store-illustration {
+            position: relative; z-index: 1;
+            width: 100%; max-width: 220px;
+        }
+        .store-illustration svg { width: 100%; height: auto; }
+
+        .brand-tagline {
+            font-size: 0.78rem;
+            color: rgba(255,255,255,0.65);
+            font-style: italic;
+            text-align: center;
+            position: relative; z-index: 1;
+        }
+
+
+        .panel-right {
+            background: #fff;
+            padding: 3rem 2.5rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .form-header { margin-bottom: 2rem; }
+        .form-header h1 { font-size: 1.4rem; font-weight: 700; color: #1a1a2e; }
+        .form-header p  { font-size: 0.85rem; color: #64748b; margin-top: 4px; }
+
+
+        .field { margin-bottom: 1.1rem; }
+
+        .field label {
+            display: block;
+            font-size: 0.72rem;
+            font-weight: 600;
+            color: #475569;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            margin-bottom: 6px;
+        }
+
+        .field-wrap { position: relative; }
+
+        .field-wrap .field-icon {
+            position: absolute;
+            left: 13px; top: 50%;
+            transform: translateY(-50%);
+            color: #94a3b8;
+            font-size: 0.85rem;
+            pointer-events: none;
+        }
+
+        .field-wrap input {
+            width: 100%;
+            padding: 11px 14px 11px 38px;
+            border: 1.5px solid #e2e8f0;
+            border-radius: 10px;
+            font-size: 0.88rem;
+            background: #f8fafc;
+            color: #1a1a2e;
+            transition: border-color 0.18s, box-shadow 0.18s;
+            outline: none;
+        }
+
+        .field-wrap input:focus {
+            border-color: var(--red);
+            box-shadow: 0 0 0 3px rgba(192,57,43,0.12);
+            background: #fff;
+        }
+
+        .field-wrap input::placeholder { color: #cbd5e1; }
+
+        .eye-toggle {
+            position: absolute;
+            right: 12px; top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: #94a3b8;
+            padding: 2px;
+            transition: color 0.15s;
+        }
+        .eye-toggle:hover { color: var(--red); }
+
+        /* Botón */
+        .btn-ingresar {
+            width: 100%;
+            padding: 12px;
+            background: var(--red);
+            color: #fff;
+            border: none;
+            border-radius: 10px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            letter-spacing: 0.8px;
+            cursor: pointer;
+            margin-top: 1.5rem;
+            transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
+        }
+        .btn-ingresar:hover {
+            background: var(--red-dark);
+            transform: translateY(-1px);
+            box-shadow: 0 8px 20px rgba(192,57,43,0.3);
+        }
+        .btn-ingresar:active { transform: translateY(0); }
+
+        .btn-ingresar i { margin-right: 8px; }
+
+        /* Errores */
+        .alert-custom {
+            background: #fef2f2;
+            border-left: 3px solid #e24b4a;
+            border-radius: 8px;
+            padding: 10px 14px;
+            margin-bottom: 1.25rem;
+            font-size: 0.82rem;
+            color: #b91c1c;
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+        }
+        .alert-custom i { margin-top: 1px; }
+
+        /* Pie */
+        .form-footer {
+            font-size: 0.72rem;
+            color: #94a3b8;
+            text-align: center;
+            margin-top: 1.75rem;
         }
     </style>
-        <!-- Scripts -->
-        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-        <script>
-            document.addEventListener('DOMContentLoaded', function() {
-                const togglePassword = document.getElementById('togglePassword');
-                const passwordInput = document.getElementById('inputPassword');
-                const passwordIcon = togglePassword.querySelector('i');
-                
-                // Función para alternar visibilidad de contraseña
-                togglePassword.addEventListener('click', function() {
-                    const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
-                    passwordInput.setAttribute('type', type);
-                    
-                    // Cambiar icono
-                    if (type === 'password') {
-                        passwordIcon.classList.remove('fa-eye-slash');
-                        passwordIcon.classList.add('fa-eye');
-                    } else {
-                        passwordIcon.classList.remove('fa-eye');
-                        passwordIcon.classList.add('fa-eye-slash');
-                    }
-                });
-                
-                // Efecto de enfoque en campos de entrada
-                const inputs = document.querySelectorAll('.form-control');
-                inputs.forEach(input => {
-                    // Agregar efecto al enfocar
-                    input.addEventListener('focus', function() {
-                        this.parentElement.classList.add('focused');
-                    });
-                    
-                    // Remover efecto al perder el foco
-                    input.addEventListener('blur', function() {
-                        if (this.value === '') {
-                            this.parentElement.classList.remove('focused');
-                        }
-                    });
-                });
-                
-                // Efecto de validación para campos requeridos
-                const form = document.querySelector('form');
-                form.addEventListener('submit', function(e) {
-                    let isValid = true;
-                    inputs.forEach(input => {
-                        if (input.hasAttribute('required') && input.value.trim() === '') {
-                            input.classList.add('is-invalid');
-                            isValid = false;
-                        } else {
-                            input.classList.remove('is-invalid');
-                        }
-                    });
-                    
-                    if (!isValid) {
-                        e.preventDefault();
-                    }
-                });
-            });
-        </script>
-    </body>
+</head>
+<body>
+
+<div class="login-card">
+
+    {{-- ── Panel izquierdo ── --}}
+    <div class="panel-left">
+
+        {{-- Logo escudo La Confianza --}}
+        <div class="brand-logo">
+            <svg viewBox="0 0 120 145" fill="none" xmlns="http://www.w3.org/2000/svg">
+                {{-- Escudo --}}
+                <path d="M60 5L10 26V74C10 107 32 131 60 141C88 131 110 107 110 74V26L60 5Z"
+                      fill="white" fill-opacity="0.18" stroke="white" stroke-width="2"/>
+                <path d="M60 14L18 33V74C18 103 37 125 60 134C83 125 102 103 102 74V33L60 14Z"
+                      fill="white" fill-opacity="0.1"/>
+                {{-- Círculo interior --}}
+                <circle cx="60" cy="70" r="30" fill="white" fill-opacity="0.18"/>
+                {{-- Check / tilde --}}
+                <path d="M44 70L55 82L78 56" stroke="white" stroke-width="4.5"
+                      stroke-linecap="round" stroke-linejoin="round"/>
+                {{-- Nombre en el escudo --}}
+                <text x="60" y="112" text-anchor="middle" fill="white"
+                      font-size="6.5" font-family="Poppins,sans-serif"
+                      font-weight="700" letter-spacing="1.5">LA CONFIANZA</text>
+            </svg>
+        </div>
+
+        <div class="brand-text">
+            <h2>La Confianza</h2>
+            <p>Mini Market · Lima</p>
+        </div>
+
+        {{-- Ilustración tienda --}}
+        <div class="store-illustration">
+            <svg viewBox="0 0 220 130" fill="none" xmlns="http://www.w3.org/2000/svg">
+                {{-- Suelo --}}
+                <rect x="0" y="118" width="220" height="4" rx="2" fill="rgba(0,0,0,0.15)"/>
+                {{-- Edificio --}}
+                <rect x="12" y="50" width="196" height="70" rx="4" fill="rgba(255,255,255,0.12)"/>
+                {{-- Toldo --}}
+                <rect x="8"  y="40" width="204" height="14" rx="3" fill="rgba(255,255,255,0.28)"/>
+                {{-- Rayas toldo --}}
+                <rect x="30"  y="40" width="8" height="14" fill="rgba(0,0,0,0.1)"/>
+                <rect x="60"  y="40" width="8" height="14" fill="rgba(0,0,0,0.1)"/>
+                <rect x="90"  y="40" width="8" height="14" fill="rgba(0,0,0,0.1)"/>
+                <rect x="120" y="40" width="8" height="14" fill="rgba(0,0,0,0.1)"/>
+                <rect x="150" y="40" width="8" height="14" fill="rgba(0,0,0,0.1)"/>
+                <rect x="180" y="40" width="8" height="14" fill="rgba(0,0,0,0.1)"/>
+                {{-- Cartel --}}
+                <rect x="40" y="28" width="140" height="14" rx="3" fill="rgba(255,255,255,0.22)"/>
+                <text x="110" y="39" text-anchor="middle" fill="white"
+                      font-size="7" font-family="Poppins,sans-serif" font-weight="700"
+                      letter-spacing="1.5">LA CONFIANZA</text>
+                {{-- Puerta --}}
+                <rect x="90"  y="85" width="40" height="35" rx="3" fill="rgba(0,0,0,0.18)"/>
+                <rect x="93"  y="88" width="16" height="30" rx="2" fill="rgba(255,255,255,0.15)"/>
+                <rect x="111" y="88" width="16" height="30" rx="2" fill="rgba(255,255,255,0.15)"/>
+                {{-- Estantes izquierda --}}
+                <rect x="20" y="62" width="22" height="30" rx="2" fill="rgba(255,255,255,0.2)"/>
+                <rect x="22" y="66" width="18" height="4" rx="1" fill="rgba(255,255,255,0.3)"/>
+                <rect x="22" y="74" width="18" height="4" rx="1" fill="rgba(255,255,255,0.3)"/>
+                <rect x="22" y="82" width="18" height="4" rx="1" fill="rgba(255,255,255,0.3)"/>
+                {{-- Estantes derecha --}}
+                <rect x="178" y="62" width="22" height="30" rx="2" fill="rgba(255,255,255,0.2)"/>
+                <rect x="180" y="66" width="18" height="4" rx="1" fill="rgba(255,255,255,0.3)"/>
+                <rect x="180" y="74" width="18" height="4" rx="1" fill="rgba(255,255,255,0.3)"/>
+                <rect x="180" y="82" width="18" height="4" rx="1" fill="rgba(255,255,255,0.3)"/>
+                {{-- Ventanas --}}
+                <rect x="48" y="62" width="30" height="20" rx="2" fill="rgba(255,255,255,0.2)"/>
+                <rect x="142" y="62" width="30" height="20" rx="2" fill="rgba(255,255,255,0.2)"/>
+                {{-- Productos ventana --}}
+                <circle cx="58" cy="72" r="5" fill="rgba(255,255,255,0.3)"/>
+                <circle cx="68" cy="70" r="4" fill="rgba(255,255,255,0.25)"/>
+                <circle cx="152" cy="72" r="5" fill="rgba(255,255,255,0.3)"/>
+                <circle cx="162" cy="70" r="4" fill="rgba(255,255,255,0.25)"/>
+            </svg>
+        </div>
+
+        <p class="brand-tagline">Sistema de Gestión Administrativa</p>
+    </div>
+
+    {{-- ── Panel derecho (formulario) ── --}}
+    <div class="panel-right">
+
+        <div class="form-header">
+            <h1>Bienvenido</h1>
+            <p>Ingresa tus credenciales para acceder al sistema</p>
+        </div>
+
+        {{-- Errores de validación --}}
+        @if ($errors->any())
+            @foreach ($errors->all() as $item)
+                <div class="alert-custom">
+                    <i class="fas fa-exclamation-circle"></i>
+                    {{ $item }}
+                </div>
+            @endforeach
+        @endif
+
+        <form action="/login" method="POST">
+            @csrf
+
+            {{-- Correo --}}
+            <div class="field">
+                <label>Correo electrónico</label>
+                <div class="field-wrap">
+                    <i class="fas fa-envelope field-icon"></i>
+                    <input type="email"
+                           name="email"
+                           id="inputEmail"
+                           placeholder="nombre@ejemplo.com"
+                           value="{{ old('email') }}"
+                           required>
+                </div>
+            </div>
+
+            {{-- Contraseña --}}
+            <div class="field">
+                <label>Contraseña</label>
+                <div class="field-wrap">
+                    <i class="fas fa-lock field-icon"></i>
+                    <input type="password"
+                           name="password"
+                           id="inputPassword"
+                           placeholder="••••••••"
+                           required>
+                    <button class="eye-toggle" type="button" id="togglePassword" title="Ver contraseña">
+                        <i class="fas fa-eye" id="eyeIcon"></i>
+                    </button>
+                </div>
+            </div>
+
+            <button class="btn-ingresar" type="submit">
+                <i class="fas fa-sign-in-alt"></i>INICIAR SESIÓN
+            </button>
+
+        </form>
+
+        <p class="form-footer">
+            &copy; {{ date('Y') }} La Confianza Mini Market · Lima, Perú
+        </p>
+    </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    // Toggle contraseña
+    document.getElementById('togglePassword').addEventListener('click', function () {
+        const input = document.getElementById('inputPassword');
+        const icon  = document.getElementById('eyeIcon');
+        const isPass = input.type === 'password';
+        input.type = isPass ? 'text' : 'password';
+        icon.classList.toggle('fa-eye',      !isPass);
+        icon.classList.toggle('fa-eye-slash', isPass);
+    });
+
+    // Validación básica antes de enviar
+    document.querySelector('form').addEventListener('submit', function (e) {
+        const inputs = this.querySelectorAll('input[required]');
+        let ok = true;
+        inputs.forEach(input => {
+            if (!input.value.trim()) {
+                input.style.borderColor = '#e24b4a';
+                ok = false;
+            } else {
+                input.style.borderColor = '';
+            }
+        });
+        if (!ok) e.preventDefault();
+    });
+</script>
+</body>
 </html>
