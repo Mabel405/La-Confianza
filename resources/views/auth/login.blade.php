@@ -261,9 +261,7 @@
             letter-spacing: 1px;
         }
     
-        /* =======================
-           RESPONSIVE MÓVIL
-        ======================= */
+    
     
         @media (max-width: 576px) {
             body {

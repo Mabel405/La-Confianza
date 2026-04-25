@@ -6,7 +6,7 @@
 <link href="https://cdn.jsdelivr.net/npm/simple-datatables@7.1.2/dist/style.min.css" rel="stylesheet"/> 
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <style>
-    /* Estilos profesionales - Diseño Corporativo */
+    
     :root {
         --primary: #1e293b;
         --secondary: #334155;
@@ -25,7 +25,6 @@
         --gray-600: #475569;
     }
 
-    /* Estilos base */
     body {
         background-color: var(--gray-100);
         font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
@@ -35,7 +34,6 @@
         padding: 2rem 2rem;
     }
 
-    /* Cards con diseño corporativo */
     .card {
         border-radius: 12px;
         border: 1px solid var(--gray-200);
@@ -60,7 +58,6 @@
         padding: 1rem 1.5rem;
     }
 
-    /* Iconos minimalistas */
     .icon-container {
         width: 48px;
         height: 48px;
@@ -132,7 +129,7 @@
         letter-spacing: 0.03em;
     }
 
-    /* Footer links */
+
     .card-footer span {
         font-size: 0.875rem;
         font-weight: 500;
@@ -148,7 +145,7 @@
         color: var(--dark);
     }
 
-    /* Colores sólidos para las cards - tonos corporativos */
+
     .card-clientes { border-top: 3px solid var(--primary); }
     .card-categorias { border-top: 3px solid var(--info); }
     .card-compras { border-top: 3px solid var(--success); }

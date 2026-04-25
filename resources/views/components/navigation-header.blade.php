@@ -61,15 +61,13 @@
     </ul>
 </nav>
 
-<!-- Formulario de logout oculto -->
+
 <form id="logout-form" action="{{ route('logout') }}" method="POST" class="d-none">
     @csrf
 </form>
 
 <style>
-/* =========================
-   TOP NAVBAR – ESTILO PASTEL
-   ========================= */
+
 
 .sb-topnav {
     transition: all 0.3s ease;
@@ -121,22 +119,19 @@
     }
 }
 
-/* =========================
-   LAYOUT – NO CRUZAR SIDEBAR
-   ========================= */
+
 
 :root {
-    --sidebar-width: 260px; /* coincide con tu .sb-sidenav-dark */
+    --sidebar-width: 260px; 
 }
 
-/* Desktop */
+
 body:not(.sb-sidenav-toggled) .sb-topnav {
     left: var(--sidebar-width);
     width: calc(100% - var(--sidebar-width));
 }
 
 
-/* Evita que el contenido quede debajo del navbar */
 #layoutSidenav_content {
     padding-top: 72px;
 }

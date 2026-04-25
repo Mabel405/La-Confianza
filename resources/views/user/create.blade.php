@@ -3,6 +3,14 @@
 @section('title', 'Crear usuario')
 
 @push('css')
+<!-- Cargamos FontAwesome para los iconos del ojo -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+<style>
+    .input-group-text {
+        cursor: pointer;
+        background-color: white;
+    }
+</style>
 @endpush
 
 @section('content')
@@ -35,6 +43,7 @@
                         @enderror
                     </div>
                 </div>
+                
                 <!--Email-->
                 <div class="row mb-4">
                     <label for="email" class="col-sm-2 col-form-label">Email:</label>
@@ -57,7 +66,12 @@
                 <div class="row mb-4">
                     <label for="password" class="col-sm-2 col-form-label">Contraseña:</label>
                     <div class="col-sm-4">
-                        <input type="password" name="password" id="password" class="form-control">
+                        <div class="input-group">
+                            <input type="password" name="password" id="password" class="form-control">
+                            <span class="input-group-text toggle-password" data-target="password">
+                                <i class="fa-solid fa-eye"></i>
+                            </span>
+                        </div>
                     </div>
                     <div class="col-sm-4">
                         <div class="form-text">
@@ -75,7 +89,12 @@
                 <div class="row mb-4">
                     <label for="password_confirm" class="col-sm-2 col-form-label">Confirmar Contraseña:</label>
                     <div class="col-sm-4">
-                        <input type="password" name="password_confirm" id="password_confirm" class="form-control">
+                        <div class="input-group">
+                            <input type="password" name="password_confirm" id="password_confirm" class="form-control">
+                            <span class="input-group-text toggle-password" data-target="password_confirm">
+                                <i class="fa-solid fa-eye"></i>
+                            </span>
+                        </div>
                     </div>
                     <div class="col-sm-4">
                         <div class="form-text">
@@ -121,12 +140,27 @@
 </div>
 @endsection      
 
-
-
-
-
 @push('js')
+<script>
+    document.querySelectorAll('.toggle-password').forEach(span => {
+        span.addEventListener('click', function() {
+            
+            const targetId = this.getAttribute('data-target');
+            const input = document.getElementById(targetId);
+            const icon = this.querySelector('i');
 
+            
+            if (input.type === "password") {
+                input.type = "text";
+                icon.classList.remove('fa-eye');
+                icon.classList.add('fa-eye-slash');
+            } else {
+                input.type = "password";
+                icon.classList.remove('fa-eye-slash');
+                icon.classList.add('fa-eye');
+            }
+        });
+    });
+</script>
 @endpush
-
 

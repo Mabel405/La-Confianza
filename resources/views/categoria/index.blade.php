@@ -15,14 +15,14 @@ let message = "{{ session('success') }}";
 
 const Toast = Swal.mixin({
   toast: true,
-  position: "top-end", // derecha arriba
+  position: "top-end", 
   showConfirmButton: false,
   timer: 2400,
   timerProgressBar: false,
   background: "#f2f2f7",
   color: "#111",
   width: "auto",
-  padding: "18px 24px", // ⬅️ más grande
+  padding: "18px 24px", 
   customClass: {
     popup: "ios-toast-right",
     title: "ios-toast-title-right",
@@ -51,14 +51,14 @@ if (message) {
 
 /* Texto */
 .ios-toast-title-right {
-  font-size: 17px !important; /* ⬅️ más grande */
+  font-size: 17px !important; 
   font-weight: 500 !important;
   text-align: left !important;
 }
 
 /* Icono */
 .ios-toast-icon-right {
-  font-size: 20px !important; /* ⬅️ más grande */
+  font-size: 20px !important;
 }
 
 /* Mobile */
