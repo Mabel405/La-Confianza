@@ -14,3 +14,4 @@ class Documento extends Model
         return $this->hasMany(Persona::class);
     }
 }
+ 
