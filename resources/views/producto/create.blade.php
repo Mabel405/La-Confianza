@@ -27,13 +27,34 @@
             <div class="row g-3">
                 <!--Codigo-->
                 <div class="col-md-6 mb-2">
-                    <label for="codigo" class="form-label">Codigo:</label>
-                    <input type="text" name="codigo" id="codigo" class="form-control" value= "{{old('codigo')}}">
+                
+                    <label for="codigo" class="form-label">
+                        Codigo:
+                    </label>
+                
+                    {{-- Visible (como Compra) --}}
+                    <input
+                        type="text"
+                        class="form-control border-primary bg-light"
+                        value="{{ $siguienteCodigo }}"
+                        readonly
+                    >
+                
+                    {{-- Campo que sí se envía --}}
+                    <input
+                        type="hidden"
+                        name="codigo"
+                        id="codigo"
+                        value="{{ $siguienteCodigo }}"
+                    >
+                
                     @error('codigo')
-                    <small class="text-danger">{{'*'.$message}}</small>
+                        <small class="text-danger">
+                            {{ '*'.$message }}
+                        </small>
                     @enderror
+                
                 </div>
-
                 <!--Nombre-->
                 <div class="col-md-6 mb-2">
                     <label for="nombre" class="form-label">Nombre:</label>

@@ -3,8 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreMarcaRequest;
-use App\Http\Requests\UpdateMarcaRequest; // 👈 ESTA LÍNEA
-use App\Models\Caracteristica;
+use App\Http\Requests\UpdateMarcaRequest; 
 use App\Models\Marca; 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
