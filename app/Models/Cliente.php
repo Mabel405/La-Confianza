@@ -20,3 +20,4 @@ class Cliente extends Model
     protected $fillable = ['persona_id'];
 }
 
+ 

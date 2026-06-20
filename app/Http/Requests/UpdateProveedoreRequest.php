@@ -14,7 +14,7 @@ class UpdateProveedoreRequest extends FormRequest
         return true;
     }
 
-    
+     
     
     public function rules(): array
     {

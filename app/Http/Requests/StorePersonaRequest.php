@@ -10,7 +10,7 @@ class StorePersonaRequest extends FormRequest
     {
         return true;
     }
-
+ 
     public function rules(): array
     {
         return [
@@ -22,11 +22,11 @@ class StorePersonaRequest extends FormRequest
         ];
     }
 
-    
+     
     public function withValidator($validator)
     {
         $validator->after(function ($validator) {
-    
+     
             $documento = $this->documento_id;
             $value = $this->numero_documento;
     
@@ -43,7 +43,7 @@ class StorePersonaRequest extends FormRequest
                     $validator->errors()->add('numero_documento', 'El DNI solo debe contener números.');
                 }
             }
-    
+     
             // Pasaporte (7 caracteres alfanuméricos)
             if ($documento == 2) {
                 if (strlen($value) != 7) {

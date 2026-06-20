@@ -19,7 +19,7 @@ class Venta extends Model
     public function user(){
         return $this->belongsTo(User::class);
     }
-
+ 
     public function comprobante(){
         return $this->belongsTo(Comprobante::class);
     }

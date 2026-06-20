@@ -28,4 +28,4 @@ class Persona extends Model
         'documento_id',
         'numero_documento'
     ];
-}
+} 
