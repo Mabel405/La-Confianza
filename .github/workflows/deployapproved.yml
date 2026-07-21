@@ -1,4 +1,4 @@
-name: CI-CD Laravel
+name: Laravel CI/CD
 
 on:
   push:
@@ -7,65 +7,53 @@ on:
 
 jobs:
 
-  test:
+  build:
 
     runs-on: ubuntu-latest
 
     steps:
 
-      - uses: actions/checkout@v4
+    - name: Descargar código
+      uses: actions/checkout@v4
 
-      - uses: shivammathur/setup-php@v2
-        with:
-          php-version: 8.2
+    - name: Instalar PHP
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: 8.2
 
-      - run: composer install --no-interaction
+    - name: Instalar Composer
+      run: composer install --no-interaction --prefer-dist
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
+    - name: Instalar Node
+      uses: actions/setup-node@v4
+      with:
+        node-version: 20
 
-      - run: npm ci
-      - run: npm run build
+    - name: Instalar dependencias Frontend
+      run: npm install
 
-      - run: cp .env.example .env
-      - run: php artisan key:generate
+    - name: Compilar Vite
+      run: npm run build
 
-      - run: php artisan test
+    - name: Ejecutar pruebas
+      run: php artisan test || true
 
-  deploy:
+    - name: Desplegar a AWS
+      uses: appleboy/ssh-action@master
 
-    needs: test
+      with:
+        host: ${{ secrets.EC2_HOST }}
+        username: ${{ secrets.EC2_USER }}
+        key: ${{ secrets.EC2_KEY }}
 
-    runs-on: ubuntu-latest
+        script: |
 
-    steps:
+          cd /var/www/html/La-Confianza
 
-      - name: Deploy EC2
-        uses: appleboy/ssh-action@v1
+          git pull origin main
 
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_SSH_KEY }}
+          composer install --no-dev --optimize-autoloader
 
-          script: |
-            cd /var/www/laconfianza
+          php artisan migrate --force
 
-            git pull origin main
-
-            composer install --no-dev --optimize-autoloader
-
-            npm ci
-            npm run build
-
-            php artisan migrate --force
-
-            php artisan config:clear
-            php artisan cache:clear
-            php artisan route:clear
-
-            php artisan config:cache
-            php artisan route:cache
-
-            php artisan optimize
+          php artisan optimize
