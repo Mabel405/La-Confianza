@@ -10,29 +10,29 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Descargar código
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Configurar PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.2'
+          php-version: "8.2"
 
-      - name: Instalar dependencias PHP
+      - name: Instalar Composer
         run: composer install --no-interaction --prefer-dist
 
-      - name: Configurar Node.js
+      - name: Configurar Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
 
-      - name: Instalar dependencias Node
+      - name: Instalar dependencias
         run: npm install
 
       - name: Compilar Vite
         run: npm run build
 
-      - name: Desplegar a EC2
+      - name: Deploy EC2
         uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.EC2_HOST }}
@@ -40,11 +40,7 @@ jobs:
           key: ${{ secrets.EC2_KEY }}
           script: |
             cd /var/www/html/La-Confianza
-
             git pull origin main
-
             composer install --no-dev --optimize-autoloader
-
             php artisan migrate --force
-
             php artisan optimize
