@@ -1,6 +1,5 @@
 FROM php:8.2-fpm
 
-# Instalar paquetes necesarios
 RUN apt-get update && apt-get install -y \
     git \
     unzip \
@@ -14,12 +13,14 @@ RUN apt-get update && apt-get install -y \
         zip \
     && rm -rf /var/lib/apt/lists/*
 
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+
 WORKDIR /var/www/html
 
-# Copiar el proyecto (incluye vendor si no está en .dockerignore)
 COPY . .
 
-# Permisos
+RUN composer install --no-dev --optimize-autoloader
+
 RUN chmod -R 775 storage bootstrap/cache
 
 EXPOSE 8000
