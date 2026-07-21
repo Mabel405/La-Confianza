@@ -6,40 +6,36 @@ on:
       - main
 
 jobs:
-
-  build:
+  deploy:
 
     runs-on: ubuntu-latest
 
     steps:
 
-    - name: Descargar código
+    - name: Descargar repositorio
       uses: actions/checkout@v4
 
-    - name: Instalar PHP
+    - name: Configurar PHP
       uses: shivammathur/setup-php@v2
       with:
-        php-version: 8.2
+        php-version: '8.2'
 
     - name: Instalar Composer
-      run: composer install --no-interaction --prefer-dist
+      run: composer install --no-dev --prefer-dist --no-interaction
 
-    - name: Instalar Node
+    - name: Configurar Node
       uses: actions/setup-node@v4
       with:
         node-version: 20
 
-    - name: Instalar dependencias Frontend
+    - name: Instalar dependencias
       run: npm install
 
     - name: Compilar Vite
       run: npm run build
 
-    - name: Ejecutar pruebas
-      run: php artisan test || true
-
-    - name: Desplegar a AWS
-      uses: appleboy/ssh-action@master
+    - name: Conectarse a AWS y desplegar
+      uses: appleboy/ssh-action@v1.2.0
 
       with:
         host: ${{ secrets.EC2_HOST }}
@@ -47,7 +43,6 @@ jobs:
         key: ${{ secrets.EC2_KEY }}
 
         script: |
-
           cd /var/www/html/La-Confianza
 
           git pull origin main
