@@ -9,6 +9,7 @@ use Spatie\Permission\Models\Role;
 use Spatie\Permission\Models\Permission;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Arr;
 use App\Http\Requests\StoreUserRequest;
 use App\Http\Requests\UpdateUserRequest;
@@ -60,8 +61,22 @@ class UserController extends Controller
             $user->assignRole($request->role);
 
             DB::commit();
+
+            Log::info('Usuario registrado', [
+                'user_id' => $user->id,
+                'email' => $user->email,
+                'role' => $request->role,
+                'created_by' => auth()->id(),
+            ]);
         } catch (Exception $e) {
             DB::rollBack();
+
+            Log::error('Error al registrar usuario', [
+                'message' => $e->getMessage(),
+                'email' => $request->email,
+                'role' => $request->role,
+                'created_by' => auth()->id(),
+            ]);
         }
 
         return redirect()->route('users.index')->with('success','Usuario Registrado');
@@ -105,8 +120,22 @@ class UserController extends Controller
             $user->syncRoles([$request->role]);
     
             DB::commit();
+
+            Log::info('Usuario editado', [
+                'user_id' => $user->id,
+                'email' => $user->email,
+                'role' => $request->role,
+                'updated_by' => auth()->id(),
+            ]);
         } catch (Exception $e) {
             DB::rollBack();
+
+            Log::error('Error al editar usuario', [
+                'message' => $e->getMessage(),
+                'user_id' => $user->id,
+                'email' => $request->email,
+                'updated_by' => auth()->id(),
+            ]);
         }
 
         return redirect()->route('users.index')->with('success', 'Usuario editado');
@@ -120,12 +149,27 @@ class UserController extends Controller
     {
         $user = User::find($id);
 
+        if (!$user) {
+            Log::warning('Intento de eliminar usuario no encontrado', [
+                'user_id' => $id,
+                'deleted_by' => auth()->id(),
+            ]);
+
+            return redirect()->route('users.index')->with('error', 'Usuario no encontrado');
+        }
+
         //Eliminar rol
         $rolUser = $user->getRoleNames()->first();
         $user->removeRole($rolUser);
 
         //Eliminar usuario
         $user->delete();
+
+        Log::info('Usuario eliminado', [
+            'user_id' => $user->id,
+            'email' => $user->email,
+            'deleted_by' => auth()->id(),
+        ]);
 
         return redirect()->route('users.index')->with('success', 'Usuario eliminado');
          

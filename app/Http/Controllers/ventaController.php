@@ -8,7 +8,9 @@ use App\Models\Producto;
 use App\Models\Cliente;
 use App\Models\Venta;
 use Illuminate\Support\Facades\DB; 
+use Illuminate\Support\Facades\Log;
 use App\Http\Requests\StoreVentaRequest;
+use Exception;
 
 
 
@@ -95,7 +97,7 @@ class ventaController extends Controller
         try{
             DB::beginTransaction();
             
-            $compra = Venta::create($request->validated());
+            $venta = Venta::create($request->validated());
            
             $arrayProducto_id = $request->get('arrayidproducto');
             $arrayCantidad = $request->get('arraycantidad');
@@ -105,7 +107,7 @@ class ventaController extends Controller
             $siseArray = count($arrayProducto_id);
             $cont = 0; 
             while($cont < $siseArray) {
-                $compra->productos()->syncWithoutDetaching([
+                $venta->productos()->syncWithoutDetaching([
                     $arrayProducto_id[$cont] => [
                         'cantidad' => $arrayCantidad[$cont],
                         'precio_venta' => $arrayPrecioVenta[$cont],
@@ -125,9 +127,25 @@ class ventaController extends Controller
 
                 $cont++;
             }
-                DB::commit();
-            }catch(Exception $e){
+            DB::commit();
+
+            Log::info('Venta registrada', [
+                'venta_id' => $venta->id,
+                'numero_comprobante' => $venta->numero_comprobante,
+                'cliente_id' => $venta->cliente_id,
+                'user_id' => $venta->user_id,
+                'items' => $siseArray,
+                'created_by' => auth()->id(),
+            ]);
+        }catch(Exception $e){
                 DB::rollBack();
+
+                Log::error('Error al registrar venta', [
+                    'message' => $e->getMessage(),
+                    'created_by' => auth()->id(),
+                    'cliente_id' => $request->cliente_id ?? null,
+                    'numero_comprobante' => $request->numero_comprobante ?? null,
+                ]);
             }
         return redirect()->route('ventas.index')->with('success','Venta exitosa');
     }
@@ -161,9 +179,26 @@ class ventaController extends Controller
      */
     public function destroy(string $id)
     {
-        Venta::where('id',$id)
-        ->update([
+        $venta = Venta::find($id);
+
+        if (!$venta) {
+            Log::warning('Intento de anular venta no encontrada', [
+                'venta_id' => $id,
+                'deleted_by' => auth()->id(),
+            ]);
+
+            return redirect()->route('ventas.index')->with('error', 'Venta no encontrada');
+        }
+
+        $venta->update([
             'estado' => 0
+        ]);
+
+        Log::info('Venta anulada', [
+            'venta_id' => $venta->id,
+            'numero_comprobante' => $venta->numero_comprobante,
+            'cliente_id' => $venta->cliente_id,
+            'deleted_by' => auth()->id(),
         ]);
 
         return redirect()->route('ventas.index')->with('success','Venta eliminada');

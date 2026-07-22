@@ -9,6 +9,7 @@ use App\Models\Proveedore;
 use Carbon\Carbon;
 use Exception;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use App\Http\Requests\StoreCompraRequest;
 use Illuminate\Http\Request;
 
@@ -117,8 +118,23 @@ class compraController extends Controller
 
 
                 DB::commit();
+                Log::info('Compra registrada', [
+                    'compra_id' => $compra->id,
+                    'numero_comprobante' => $compra->numero_comprobante,
+                    'proveedore_id' => $compra->proveedore_id,
+                    'user_id' => $compra->user_id,
+                    'items' => $siseArray,
+                    'created_by' => auth()->id(),
+                ]);
             }catch(Exception $e){
                 DB::rollBack();
+
+                Log::error('Error al registrar compra', [
+                    'message' => $e->getMessage(),
+                    'created_by' => auth()->id(),
+                    'proveedore_id' => $request->proveedore_id ?? null,
+                    'numero_comprobante' => $request->numero_comprobante ?? null,
+                ]);
             }
         return redirect()->route('compras.index')->with('success','Compra exitosa');
     }
@@ -153,9 +169,26 @@ class compraController extends Controller
      */
     public function destroy(string $id)
     {
-        Compra::where('id',$id)
-        ->update([
+        $compra = Compra::find($id);
+
+        if (!$compra) {
+            Log::warning('Intento de anular compra no encontrada', [
+                'compra_id' => $id,
+                'deleted_by' => auth()->id(),
+            ]);
+
+            return redirect()->route('compras.index')->with('error', 'Compra no encontrada');
+        }
+
+        $compra->update([
             'estado' => 0
+        ]);
+
+        Log::info('Compra anulada', [
+            'compra_id' => $compra->id,
+            'numero_comprobante' => $compra->numero_comprobante,
+            'proveedore_id' => $compra->proveedore_id,
+            'deleted_by' => auth()->id(),
         ]);
 
         return redirect()->route('compras.index')->with('success','Compra eliminada');
