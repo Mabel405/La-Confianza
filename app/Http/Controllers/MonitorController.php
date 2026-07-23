@@ -86,6 +86,31 @@ class MonitorController extends Controller
         }
     }
 
+    public function downloadLatestBackup()
+    {
+        $latest = $this->latestBackupSnapshot();
+
+        if ($latest === null) {
+            return response()->json([
+                'ok' => false,
+                'message' => 'No hay backup disponible para descargar.',
+            ], 404);
+        }
+
+        $path = $this->backupDirectory().DIRECTORY_SEPARATOR.$latest['file_name'];
+
+        if (! file_exists($path)) {
+            return response()->json([
+                'ok' => false,
+                'message' => 'El archivo de backup ya no existe en el servidor.',
+            ], 404);
+        }
+
+        return response()->download($path, $latest['file_name'], [
+            'Content-Type' => 'application/sql',
+        ]);
+    }
+
     private function snapshot(): array
     {
         $database = $this->databaseStatus();
@@ -231,45 +256,61 @@ class MonitorController extends Controller
 
     private function dockerStatus(): array
     {
-        $output = $this->runCommand('docker ps --format "{{.Names}}|{{.Status}}" 2>&1');
+        $snapshot = $this->dockerSnapshot();
 
-        if (! $output) {
+        if ($snapshot === null) {
             return [
                 'available' => false,
                 'label' => 'No disponible',
                 'containers' => [],
                 'status' => 'neutral',
+                'source' => 'host-script',
+                'updated_at' => null,
             ];
         }
 
-        if (str_contains(strtolower($output), 'permission denied') || str_contains(strtolower($output), 'command not found')) {
-            return [
-                'available' => false,
-                'label' => 'No disponible',
-                'containers' => [],
-                'status' => 'neutral',
-            ];
-        }
-
-        $containers = collect(explode("\n", trim($output)))
-            ->filter()
-            ->map(function ($line) {
-                [$name, $status] = array_pad(explode('|', $line, 2), 2, '');
-
+        $containers = collect($snapshot['containers'] ?? [])
+            ->map(function ($container) {
                 return [
-                    'name' => trim($name),
-                    'status' => trim($status),
+                    'name' => (string) ($container['name'] ?? 'unknown'),
+                    'status' => (string) ($container['status'] ?? 'unknown'),
                 ];
             })
             ->values()
             ->all();
 
         return [
-            'available' => true,
-            'label' => 'Running: '.count($containers),
+            'available' => (bool) ($snapshot['available'] ?? true),
+            'label' => (string) ($snapshot['label'] ?? ('Running: '.count($containers))),
             'containers' => $containers,
-            'status' => count($containers) > 0 ? 'success' : 'warning',
+            'status' => (string) ($snapshot['status'] ?? (count($containers) > 0 ? 'success' : 'warning')),
+            'source' => 'host-script',
+            'updated_at' => $snapshot['updated_at'] ?? null,
+            'raw' => $snapshot['raw'] ?? null,
         ];
+    }
+
+    private function dockerSnapshot(): ?array
+    {
+        $path = $this->dockerSnapshotPath();
+
+        if (! file_exists($path)) {
+            return null;
+        }
+
+        $contents = File::get($path);
+        $decoded = json_decode($contents, true);
+
+        if (! is_array($decoded)) {
+            return null;
+        }
+
+        return $decoded;
+    }
+
+    private function dockerSnapshotPath(): string
+    {
+        return storage_path('app/monitor/docker.json');
     }
 
     private function tailLogs(): array

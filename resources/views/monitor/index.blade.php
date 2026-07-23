@@ -165,12 +165,13 @@
                 <div class="metric-label mb-1">Docker</div>
                 <div class="d-flex justify-content-between align-items-start">
                     <div>
-                        <div id="dockerStatus" class="fw-bold fs-4">{{ $metrics['docker']['label'] ?? 'N/A' }}</div>
+                <div id="dockerStatus" class="fw-bold fs-4">{{ $metrics['docker']['label'] ?? 'N/A' }}</div>
                         <div class="small-muted">Contenedores visibles</div>
                     </div>
                     <span id="dockerDot" class="pill"><span class="status-dot status-success"></span>OK</span>
                 </div>
                 <div id="dockerHint" class="small-muted mt-3">Listo para inspeccion</div>
+                <div id="dockerUpdatedAt" class="small-muted mt-2">{{ $metrics['docker']['updated_at'] ?? 'Sin sincronizar' }}</div>
             </div>
         </div>
         <div class="col-12 col-md-6 col-xxl-3">
@@ -254,6 +255,12 @@
                 <button id="backupButton" type="button" class="btn btn-light fw-semibold w-100">
                     Generar backup ahora
                 </button>
+                <a id="downloadBackupLink"
+                   href="{{ !empty($metrics['backup_status']['file_name']) ? route('monitor.backup.download') : '#' }}"
+                   class="btn btn-outline-light fw-semibold w-100 mt-2 {{ empty($metrics['backup_status']['file_name']) ? 'disabled' : '' }}"
+                   {{ empty($metrics['backup_status']['file_name']) ? 'aria-disabled=true tabindex=-1' : '' }}>
+                    Descargar último backup
+                </a>
                 <div id="backupFeedback" class="small-muted mt-3"></div>
             </div>
         </div>
@@ -390,6 +397,7 @@
 
         document.getElementById('dockerStatus').textContent = data.docker?.label || 'N/A';
         document.getElementById('dockerHint').textContent = data.docker?.available ? 'Contenedores detectados por Docker' : 'Docker no disponible o sin permisos';
+        document.getElementById('dockerUpdatedAt').textContent = data.docker?.updated_at || 'Sin sincronizar';
         setStatusDot('dockerDot', data.docker?.status || 'neutral', data.docker?.label || 'N/A');
         renderContainers(data.docker?.containers || []);
 
@@ -404,6 +412,16 @@
         document.getElementById('backupFeedback').textContent = data.backup_status?.file_name
             ? `Archivo: ${data.backup_status.file_name}${data.backup_status.size ? ' · ' + data.backup_status.size : ''}`
             : 'Sin backups previos.';
+        const downloadLink = document.getElementById('downloadBackupLink');
+        const hasBackup = Boolean(data.backup_status?.file_name);
+        downloadLink.href = hasBackup ? '{{ route('monitor.backup.download') }}' : '#';
+        downloadLink.classList.toggle('disabled', !hasBackup);
+        downloadLink.setAttribute('aria-disabled', String(!hasBackup));
+        if (!hasBackup) {
+            downloadLink.setAttribute('tabindex', '-1');
+        } else {
+            downloadLink.removeAttribute('tabindex');
+        }
         document.getElementById('hostName').textContent = data.server?.hostname || 'unknown';
         document.getElementById('hostOs').textContent = data.server?.os || 'N/A';
         document.getElementById('sessionsValue').textContent = data.sessions_active === null || data.sessions_active === undefined ? 'N/A' : data.sessions_active;
