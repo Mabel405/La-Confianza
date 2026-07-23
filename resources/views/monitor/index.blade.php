@@ -484,6 +484,21 @@
     }
 
     renderMetrics(initialMetrics);
+    const backupButton = document.getElementById('backupButton');
+    const downloadBackupLink = document.getElementById('downloadBackupLink');
+
+    if (backupButton) {
+        backupButton.textContent = 'Descargar último backup';
+        backupButton.addEventListener('click', (event) => {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+
+            if (downloadBackupLink && downloadBackupLink.href && downloadBackupLink.href !== '#') {
+                window.location.href = downloadBackupLink.href;
+            }
+        }, true);
+    }
+
     document.getElementById('backupButton').addEventListener('click', runBackup);
     setInterval(refreshMonitor, 5000);
 </script>

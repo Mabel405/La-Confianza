@@ -20,7 +20,6 @@ use App\Http\Controllers\MonitorController;
 Route::get('/', [HomeController::class,'index'])->name('panel');
 Route::get('/dashboard/monitor', [MonitorController::class, 'index'])->name('monitor.index');
 Route::get('/dashboard/monitor/data', [MonitorController::class, 'data'])->name('monitor.data');
-Route::post('/dashboard/monitor/backup', [MonitorController::class, 'backup'])->name('monitor.backup');
 Route::get('/dashboard/monitor/backup/download', [MonitorController::class, 'downloadLatestBackup'])->name('monitor.backup.download');
 
 Route::resources([

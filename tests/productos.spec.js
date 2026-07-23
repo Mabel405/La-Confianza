@@ -24,12 +24,12 @@ test('CRUD de productos', async ({ page }) => {
     const suffix = Date.now();
     const originalName = `Producto E2E ${suffix}`;
     const editedName = `Producto Editado ${suffix}`;
-    const productCode = `E2E-${suffix}`;
 
     await login(page);
 
     await page.goto('/productos');
     await page.getByRole('button', { name: /a\u00f1adir nuevo registro/i }).click();
+    await expect(page.getByRole('heading', { name: /crear productos/i })).toBeVisible();
 
     const marcaId = await firstSelectValue(page, '#marca_id');
     const presentacionId = await firstSelectValue(page, '#presentacione_id');
@@ -39,7 +39,9 @@ test('CRUD de productos', async ({ page }) => {
     expect(presentacionId, 'Debe existir al menos una presentacion activa').not.toBeNull();
     expect(categoriaId, 'Debe existir al menos una categoria activa').not.toBeNull();
 
-    await page.locator('input[name="codigo"]').fill(productCode);
+    const generatedCode = await page.locator('input[name="codigo"]').inputValue();
+    expect(generatedCode).toMatch(/^PROD-/);
+
     await page.locator('input[name="nombre"]').fill(originalName);
     await page.locator('textarea[name="descripcion"]').fill('Producto creado por Playwright');
     await page.locator('input[name="fecha_vencimiento"]').fill('2030-12-31');
