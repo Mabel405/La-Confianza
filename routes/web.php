@@ -15,8 +15,11 @@ use App\Http\Controllers\LogoutController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\MonitorController;
 
 Route::get('/', [HomeController::class,'index'])->name('panel');
+Route::get('/dashboard/monitor', [MonitorController::class, 'index'])->name('monitor.index');
+Route::get('/dashboard/monitor/data', [MonitorController::class, 'data'])->name('monitor.data');
 
 Route::resources([
     'categorias' => CategoriaController::class,
