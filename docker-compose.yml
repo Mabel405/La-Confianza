@@ -1,35 +1,21 @@
 services:
 
   laravel:
-
     image: robertsl/la-confianza:latest
-
     container_name: la-confianza
-
     restart: unless-stopped
-
     volumes:
-
       - ./.env:/var/www/html/.env
-
-  nginx:
-
-    image: nginx:latest
-
-    container_name: nginx
-
-    restart: unless-stopped
-
-    ports:
-
-      - "8000:80"
-
-    volumes:
-
-      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf
-
       - ./:/var/www/html
 
+  nginx:
+    image: nginx:latest
+    container_name: nginx
+    restart: unless-stopped
+    ports:
+      - "8000:80"
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf
+      - ./:/var/www/html
     depends_on:
-
       - laravel

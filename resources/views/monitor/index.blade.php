@@ -3,6 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>NOC en Vivo</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
@@ -249,7 +250,11 @@
             <div class="glass p-3 h-100">
                 <div class="metric-label mb-1">Backup</div>
                 <div id="backupStatus" class="metric-value">{{ $metrics['backup_status']['label'] ?? 'No configurado' }}</div>
-                <div class="small-muted">Se puede conectar luego a tu proceso real de backup</div>
+                <div class="small-muted mb-3">Backup manual de MySQL desde el propio Ubuntu</div>
+                <button id="backupButton" type="button" class="btn btn-light fw-semibold w-100">
+                    Generar backup ahora
+                </button>
+                <div id="backupFeedback" class="small-muted mt-3"></div>
             </div>
         </div>
         <div class="col-12 col-lg-4">
@@ -396,6 +401,9 @@
 
         document.getElementById('responseTime').textContent = data.response_time_ms !== null && data.response_time_ms !== undefined ? `${data.response_time_ms} ms` : 'N/A';
         document.getElementById('backupStatus').textContent = data.backup_status?.label || 'No configurado';
+        document.getElementById('backupFeedback').textContent = data.backup_status?.file_name
+            ? `Archivo: ${data.backup_status.file_name}${data.backup_status.size ? ' · ' + data.backup_status.size : ''}`
+            : 'Sin backups previos.';
         document.getElementById('hostName').textContent = data.server?.hostname || 'unknown';
         document.getElementById('hostOs').textContent = data.server?.os || 'N/A';
         document.getElementById('sessionsValue').textContent = data.sessions_active === null || data.sessions_active === undefined ? 'N/A' : data.sessions_active;
@@ -405,6 +413,41 @@
         pushMetric(cpuChart, data.cpu?.usage, data.updated_at, 'cpu');
         pushMetric(memoryChart, data.memory?.usage, data.updated_at, 'memory');
         pushMetric(diskChart, data.disk?.usage, data.updated_at, 'disk');
+    }
+
+    async function runBackup() {
+        const button = document.getElementById('backupButton');
+        const feedback = document.getElementById('backupFeedback');
+
+        button.disabled = true;
+        button.textContent = 'Generando...';
+        feedback.textContent = 'Procesando backup...';
+
+        try {
+            const response = await fetch('/dashboard/monitor/backup', {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                },
+                body: JSON.stringify({}),
+            });
+
+            const data = await response.json();
+
+            if (!response.ok || !data.ok) {
+                throw new Error(data.message || 'No se pudo generar el backup.');
+            }
+
+            feedback.textContent = data.message;
+            await refreshMonitor();
+        } catch (error) {
+            feedback.textContent = error.message || 'Falló el backup.';
+        } finally {
+            button.disabled = false;
+            button.textContent = 'Generar backup ahora';
+        }
     }
 
     async function refreshMonitor() {
@@ -423,6 +466,7 @@
     }
 
     renderMetrics(initialMetrics);
+    document.getElementById('backupButton').addEventListener('click', runBackup);
     setInterval(refreshMonitor, 5000);
 </script>
 </body>

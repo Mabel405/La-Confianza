@@ -3,7 +3,9 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\File;
 
 class MonitorController extends Controller
 {
@@ -17,6 +19,71 @@ class MonitorController extends Controller
     public function data(): JsonResponse
     {
         return response()->json($this->snapshot());
+    }
+
+    public function backup(Request $request): JsonResponse
+    {
+        $backupDir = $this->backupDirectory();
+        $this->ensureDirectory($backupDir);
+
+        $timestamp = now()->format('Y-m-d_H-i-s');
+        $fileName = 'dbsistemaabarrote_'.$timestamp.'.sql';
+        $backupPath = $backupDir.DIRECTORY_SEPARATOR.$fileName;
+
+        $connection = config('database.connections.mysql');
+        $database = $connection['database'] ?? env('DB_DATABASE', 'dbsistemaabarrote');
+        $user = $connection['username'] ?? env('DB_USERNAME', 'root');
+        $password = $connection['password'] ?? env('DB_PASSWORD', '');
+        $host = $connection['host'] ?? env('DB_HOST', '127.0.0.1');
+        $port = $connection['port'] ?? env('DB_PORT', '3306');
+
+        $defaultsFile = tempnam(sys_get_temp_dir(), 'mysql_backup_');
+
+        if ($defaultsFile === false) {
+            return response()->json([
+                'ok' => false,
+                'message' => 'No se pudo preparar el archivo temporal de credenciales.',
+            ], 500);
+        }
+
+        $defaultsContent = "[client]\n".
+            "user={$user}\n".
+            "password={$password}\n".
+            "host={$host}\n".
+            "port={$port}\n";
+
+        File::put($defaultsFile, $defaultsContent);
+
+        try {
+            $command = sprintf(
+                'mysqldump --defaults-extra-file=%s --single-transaction --routines --triggers --events %s > %s 2>&1',
+                escapeshellarg($defaultsFile),
+                escapeshellarg($database),
+                escapeshellarg($backupPath)
+            );
+
+            $output = $this->runCommand($command);
+
+            if (! file_exists($backupPath) || filesize($backupPath) === 0) {
+                @unlink($backupPath);
+
+                return response()->json([
+                    'ok' => false,
+                    'message' => 'El backup no se generó correctamente.',
+                    'output' => $output,
+                    'backup_status' => $this->backupStatus(),
+                ], 500);
+            }
+
+            return response()->json([
+                'ok' => true,
+                'message' => 'Backup generado correctamente.',
+                'output' => $output,
+                'backup_status' => $this->backupStatus(),
+            ]);
+        } finally {
+            @unlink($defaultsFile);
+        }
     }
 
     private function snapshot(): array
@@ -259,10 +326,68 @@ class MonitorController extends Controller
 
     private function backupStatus(): array
     {
+        $latest = $this->latestBackupSnapshot();
+
+        if ($latest === null) {
+            return [
+                'label' => 'No configurado',
+                'status' => 'neutral',
+                'last_backup_at' => null,
+                'file_name' => null,
+                'size' => null,
+            ];
+        }
+
         return [
-            'label' => 'No configurado',
-            'status' => 'neutral',
+            'label' => 'Último backup: '.$latest['last_backup_at'],
+            'status' => 'success',
+            'last_backup_at' => $latest['last_backup_at'],
+            'file_name' => $latest['file_name'],
+            'size' => $latest['size'],
         ];
+    }
+
+    private function backupDirectory(): string
+    {
+        return storage_path('app/backups/mysql');
+    }
+
+    private function latestBackupSnapshot(): ?array
+    {
+        $directory = $this->backupDirectory();
+
+        if (! is_dir($directory)) {
+            return null;
+        }
+
+        $files = collect(glob($directory.DIRECTORY_SEPARATOR.'*.sql') ?: [])
+            ->filter(fn ($file) => is_file($file))
+            ->map(fn ($file) => [
+                'path' => $file,
+                'mtime' => filemtime($file) ?: 0,
+                'size' => filesize($file) ?: 0,
+            ])
+            ->sortByDesc('mtime')
+            ->values();
+
+        if ($files->isEmpty()) {
+            return null;
+        }
+
+        $latest = $files->first();
+
+        return [
+            'file_name' => basename($latest['path']),
+            'last_backup_at' => now()->setTimestamp($latest['mtime'])->format('Y-m-d H:i:s'),
+            'size' => $this->formatBytes($latest['size']),
+        ];
+    }
+
+    private function ensureDirectory(string $directory): void
+    {
+        if (! is_dir($directory)) {
+            File::makeDirectory($directory, 0755, true);
+        }
     }
 
     private function parseMemInfo(): array
