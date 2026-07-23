@@ -239,6 +239,47 @@
         </div>
     </div>
 
+    <div class="row g-3 mb-3">
+        <div class="col-12 col-xl-6">
+            <div class="glass p-3 h-100">
+                <div class="section-title mb-3">Despliegue</div>
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <div>
+                        <div id="deployStatus" class="fw-bold fs-4">{{ $metrics['deploy']['label'] ?? 'Sin despliegue registrado' }}</div>
+                        <div class="small-muted">Output del ultimo deploy en EC2</div>
+                    </div>
+                    <span id="deployDot" class="pill"><span class="status-dot status-neutral"></span>Deploy</span>
+                </div>
+                <div id="deployUpdatedAt" class="small-muted mb-3">{{ $metrics['deploy']['updated_at'] ?? 'Sin sincronizar' }}</div>
+                <div id="deployLogs" class="log-box">{{ implode("\n", $metrics['deploy']['logs'] ?? []) ?: 'Sin logs de despliegue.' }}</div>
+            </div>
+        </div>
+        <div class="col-12 col-xl-6">
+            <div class="glass p-3 h-100">
+                <div class="section-title mb-3">Playwright</div>
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <div>
+                        <div id="playwrightStatus" class="fw-bold fs-4">{{ $metrics['playwright']['label'] ?? 'Sin ejecución registrada' }}</div>
+                        <div class="small-muted">Resumen de la ultima corrida E2E</div>
+                    </div>
+                    <span id="playwrightDot" class="pill"><span class="status-dot status-neutral"></span>E2E</span>
+                </div>
+                <div id="playwrightUpdatedAt" class="small-muted mb-3">{{ $metrics['playwright']['updated_at'] ?? 'Sin sincronizar' }}</div>
+                <div id="playwrightStats" class="small-muted mb-3">
+                    Pasados: {{ $metrics['playwright']['passed'] ?? 'N/A' }} |
+                    Fallidos: {{ $metrics['playwright']['failed'] ?? 'N/A' }} |
+                    Omitidos: {{ $metrics['playwright']['skipped'] ?? 'N/A' }}
+                </div>
+                <a id="playwrightReportLink"
+                   href="{{ !empty($metrics['playwright']['report_url']) ? $metrics['playwright']['report_url'] : '#' }}"
+                   class="btn btn-light fw-semibold w-100 {{ empty($metrics['playwright']['report_url']) ? 'disabled' : '' }}"
+                   {{ empty($metrics['playwright']['report_url']) ? 'aria-disabled=true tabindex=-1' : '' }}>
+                    Ver reporte Playwright
+                </a>
+            </div>
+        </div>
+    </div>
+
     <div class="row g-3">
         <div class="col-12 col-lg-4">
             <div class="glass p-3 h-100">
@@ -427,6 +468,25 @@
         document.getElementById('sessionsValue').textContent = data.sessions_active === null || data.sessions_active === undefined ? 'N/A' : data.sessions_active;
         document.getElementById('errorsCount').textContent = data.errors_count ?? 0;
         renderLogs(data.logs || []);
+        document.getElementById('deployStatus').textContent = data.deploy?.label || 'Sin despliegue registrado';
+        document.getElementById('deployUpdatedAt').textContent = data.deploy?.updated_at || 'Sin sincronizar';
+        setStatusDot('deployDot', data.deploy?.status || 'neutral', data.deploy?.available ? 'OK' : 'Deploy');
+        document.getElementById('deployLogs').textContent = (data.deploy?.logs || []).join('\n') || 'Sin logs de despliegue.';
+
+        document.getElementById('playwrightStatus').textContent = data.playwright?.label || 'Sin ejecución registrada';
+        document.getElementById('playwrightUpdatedAt').textContent = data.playwright?.updated_at || 'Sin sincronizar';
+        document.getElementById('playwrightStats').textContent = `Pasados: ${data.playwright?.passed ?? 'N/A'} | Fallidos: ${data.playwright?.failed ?? 'N/A'} | Omitidos: ${data.playwright?.skipped ?? 'N/A'}`;
+        setStatusDot('playwrightDot', data.playwright?.status || 'neutral', data.playwright?.available ? 'OK' : 'E2E');
+        const reportLink = document.getElementById('playwrightReportLink');
+        const reportUrl = data.playwright?.report_url || '#';
+        reportLink.href = reportUrl;
+        reportLink.classList.toggle('disabled', reportUrl === '#');
+        reportLink.setAttribute('aria-disabled', String(reportUrl === '#'));
+        if (reportUrl === '#') {
+            reportLink.setAttribute('tabindex', '-1');
+        } else {
+            reportLink.removeAttribute('tabindex');
+        }
 
         pushMetric(cpuChart, data.cpu?.usage, data.updated_at, 'cpu');
         pushMetric(memoryChart, data.memory?.usage, data.updated_at, 'memory');

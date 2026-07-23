@@ -40,12 +40,19 @@ jobs:
       run: npx playwright install --with-deps
 
     - name: Ejecutar pruebas E2E
+      id: playwright
+      continue-on-error: true
       env:
         BASE_URL: http://${{ secrets.EC2_HOST }}:8000
         TEST_EMAIL: ${{ secrets.TEST_EMAIL }}
         TEST_PASSWORD: ${{ secrets.TEST_PASSWORD }}
       run: |
-        npx playwright test
+        npx playwright test --reporter=json > playwright-results.json
+
+    - name: Resumir Playwright
+      if: always()
+      run: |
+        node scripts/parse-playwright-report.mjs playwright-results.json playwright-summary.json
 
     # ------------------------
     # Guardar reporte
@@ -57,6 +64,16 @@ jobs:
       with:
         name: playwright-report
         path: playwright-report/
+
+    - name: Copiar resumen Playwright al EC2
+      if: always()
+      uses: appleboy/scp-action@v0.1.7
+      with:
+        host: ${{ secrets.EC2_HOST }}
+        username: ${{ secrets.EC2_USER }}
+        key: ${{ secrets.EC2_KEY }}
+        source: playwright-summary.json
+        target: /var/www/html/La-Confianza/storage/app/monitor/
 
     # ------------------------
     # Docker Login
@@ -89,6 +106,7 @@ jobs:
     # ------------------------
 
     - name: Deploy EC2
+      if: ${{ steps.playwright.outcome == 'success' }}
       uses: appleboy/ssh-action@v1.2.0
 
       with:
@@ -103,30 +121,52 @@ jobs:
 
           cd /var/www/html/La-Confianza
 
-          git pull origin main
+          mkdir -p storage/app/monitor
 
-          docker pull robertsl/la-confianza:latest
+          DEPLOY_LOG=storage/app/monitor/deploy.log
+          DEPLOY_META=storage/app/monitor/deploy.json
 
-          docker compose down
+          {
+            echo "[$(date -u +'%Y-%m-%d %H:%M:%S UTC')] Deploy iniciado"
+            echo "Branch: main"
 
-          docker compose up -d
+            git pull origin main
 
-          docker exec la-confianza php artisan optimize:clear
+            docker pull robertsl/la-confianza:latest
 
-          docker image prune -af
+            docker compose down
 
-          docker builder prune -af
+            docker compose up -d
 
-          sudo find /var/lib/docker/containers/ -name "*-json.log" -exec truncate -s 0 {} \;
+            docker exec la-confianza php artisan optimize:clear
 
-          echo "===== Contenedores ====="
+            docker image prune -af
 
-          docker ps
+            docker builder prune -af
 
-          echo "===== Logs Laravel ====="
+            sudo find /var/lib/docker/containers/ -name "*-json.log" -exec truncate -s 0 {} \;
 
-          docker exec la-confianza tail -20 storage/logs/laravel.log || true
+            echo "===== Contenedores ====="
 
-          echo "===== Estado Docker ====="
+            docker ps
 
-          docker stats --no-stream
+            echo "===== Logs Laravel ====="
+
+            docker exec la-confianza tail -20 storage/logs/laravel.log || true
+
+            echo "===== Estado Docker ====="
+
+            docker stats --no-stream
+
+            echo "[$(date -u +'%Y-%m-%d %H:%M:%S UTC')] Deploy finalizado"
+          } | tee "$DEPLOY_LOG"
+
+          cat > "$DEPLOY_META" <<'EOF'
+          {
+            "status": "success",
+            "status_label": "Deploy aplicado correctamente",
+            "branch": "main",
+            "commit": "${{ github.sha }}",
+            "updated_at": "${{ github.run_started_at }}"
+          }
+          EOF

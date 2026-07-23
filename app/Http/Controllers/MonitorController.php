@@ -128,6 +128,8 @@ class MonitorController extends Controller
             'disk' => $disk,
             'response_time_ms' => $database['response_time_ms'],
             'logs' => $this->tailLogs(),
+            'deploy' => $this->deploySnapshot(),
+            'playwright' => $this->playwrightSnapshot(),
             'errors_count' => $this->errorCount(),
             'sessions_active' => $this->activeSessions(),
             'backup_status' => $this->backupStatus(),
@@ -313,6 +315,21 @@ class MonitorController extends Controller
         return storage_path('app/monitor/docker.json');
     }
 
+    private function deployLogPath(): string
+    {
+        return storage_path('app/monitor/deploy.log');
+    }
+
+    private function deployMetaPath(): string
+    {
+        return storage_path('app/monitor/deploy.json');
+    }
+
+    private function playwrightMetaPath(): string
+    {
+        return storage_path('app/monitor/playwright.json');
+    }
+
     private function tailLogs(): array
     {
         $path = storage_path('logs/laravel.log');
@@ -324,6 +341,94 @@ class MonitorController extends Controller
         $lines = file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
 
         return array_slice($lines ?: [], -12);
+    }
+
+    private function tailDeployLogs(): array
+    {
+        $path = $this->deployLogPath();
+
+        if (! file_exists($path)) {
+            return [];
+        }
+
+        $lines = file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+
+        return array_slice($lines ?: [], -20);
+    }
+
+    private function deploySnapshot(): array
+    {
+        $path = $this->deployMetaPath();
+
+        if (! file_exists($path)) {
+            return [
+                'available' => false,
+                'label' => 'Sin despliegue registrado',
+                'status' => 'neutral',
+                'updated_at' => null,
+                'logs' => $this->tailDeployLogs(),
+            ];
+        }
+
+        $decoded = json_decode((string) File::get($path), true);
+
+        if (! is_array($decoded)) {
+            return [
+                'available' => false,
+                'label' => 'Despliegue inválido',
+                'status' => 'warning',
+                'updated_at' => null,
+                'logs' => $this->tailDeployLogs(),
+            ];
+        }
+
+        return [
+            'available' => true,
+            'label' => (string) ($decoded['status_label'] ?? 'Deploy registrado'),
+            'status' => (string) ($decoded['status'] ?? 'success'),
+            'updated_at' => (string) ($decoded['updated_at'] ?? null),
+            'commit' => $decoded['commit'] ?? null,
+            'branch' => $decoded['branch'] ?? null,
+            'logs' => $this->tailDeployLogs(),
+        ];
+    }
+
+    private function playwrightSnapshot(): array
+    {
+        $path = $this->playwrightMetaPath();
+
+        if (! file_exists($path)) {
+            return [
+                'available' => false,
+                'label' => 'Sin ejecución registrada',
+                'status' => 'neutral',
+                'updated_at' => null,
+            ];
+        }
+
+        $decoded = json_decode((string) File::get($path), true);
+
+        if (! is_array($decoded)) {
+            return [
+                'available' => false,
+                'label' => 'Reporte inválido',
+                'status' => 'warning',
+                'updated_at' => null,
+            ];
+        }
+
+        return [
+            'available' => true,
+            'label' => (string) ($decoded['status_label'] ?? 'Playwright registrado'),
+            'status' => (string) ($decoded['status'] ?? 'success'),
+            'updated_at' => (string) ($decoded['updated_at'] ?? null),
+            'total' => $decoded['total'] ?? null,
+            'passed' => $decoded['passed'] ?? null,
+            'failed' => $decoded['failed'] ?? null,
+            'skipped' => $decoded['skipped'] ?? null,
+            'duration_ms' => $decoded['duration_ms'] ?? null,
+            'report_url' => $decoded['report_url'] ?? null,
+        ];
     }
 
     private function errorCount(): int
