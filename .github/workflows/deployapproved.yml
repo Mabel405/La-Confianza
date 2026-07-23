@@ -38,6 +38,8 @@ jobs:
         script: |
           cd /var/www/html/La-Confianza
 
+          git pull origin main
+
           docker pull robertsl/la-confianza:latest
 
           docker compose down
