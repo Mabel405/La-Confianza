@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 const EMAIL = process.env.TEST_EMAIL ?? 'admin@gmail.com';
 const PASSWORD = process.env.TEST_PASSWORD ?? '123456';
 
-test('Login correcto', async ({ page }) => {
+test('Cerrar sesión', async ({ page }) => {
     await page.goto('/login');
 
     await page.locator('input[name="email"]').fill(EMAIL);
@@ -12,4 +12,10 @@ test('Login correcto', async ({ page }) => {
 
     await expect(page).toHaveURL(/\/$/);
     await expect(page.getByRole('heading', { name: /panel de control/i })).toBeVisible();
+
+    await page.locator('#navbarDropdown').click();
+    await page.locator('a[href$="/logout"]').click();
+
+    await expect(page).toHaveURL(/\/login$/);
+    await expect(page.getByRole('button', { name: /iniciar sesión/i })).toBeVisible();
 });
