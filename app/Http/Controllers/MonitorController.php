@@ -400,7 +400,7 @@ class MonitorController extends Controller
         if (! file_exists($path)) {
             return [
                 'available' => false,
-                'label' => 'Sin ejecución registrada',
+                'label' => 'Ultimo reporte de CI no encontrado',
                 'status' => 'neutral',
                 'updated_at' => null,
             ];

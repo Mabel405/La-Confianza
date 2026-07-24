@@ -259,7 +259,7 @@
                 <div class="section-title mb-3">Playwright</div>
                 <div class="d-flex justify-content-between align-items-start mb-2">
                     <div>
-                        <div id="playwrightStatus" class="fw-bold fs-4">{{ $metrics['playwright']['label'] ?? 'Sin ejecución registrada' }}</div>
+                <div id="playwrightStatus" class="fw-bold fs-4">{{ $metrics['playwright']['label'] ?? 'Ultimo reporte de CI no encontrado' }}</div>
                         <div class="small-muted">Resumen de la ultima corrida E2E</div>
                     </div>
                     <span id="playwrightDot" class="pill"><span class="status-dot status-neutral"></span>E2E</span>
@@ -473,7 +473,7 @@
         setStatusDot('deployDot', data.deploy?.status || 'neutral', data.deploy?.available ? 'OK' : 'Deploy');
         document.getElementById('deployLogs').textContent = (data.deploy?.logs || []).join('\n') || 'Sin logs de despliegue.';
 
-        document.getElementById('playwrightStatus').textContent = data.playwright?.label || 'Sin ejecución registrada';
+        document.getElementById('playwrightStatus').textContent = data.playwright?.label || 'Ultimo reporte de CI no encontrado';
         document.getElementById('playwrightUpdatedAt').textContent = data.playwright?.updated_at || 'Sin sincronizar';
         document.getElementById('playwrightStats').textContent = `Pasados: ${data.playwright?.passed ?? 'N/A'} | Fallidos: ${data.playwright?.failed ?? 'N/A'} | Omitidos: ${data.playwright?.skipped ?? 'N/A'}`;
         setStatusDot('playwrightDot', data.playwright?.status || 'neutral', data.playwright?.available ? 'OK' : 'E2E');
