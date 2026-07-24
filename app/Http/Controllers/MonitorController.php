@@ -327,7 +327,18 @@ class MonitorController extends Controller
 
     private function playwrightMetaPath(): string
     {
-        return storage_path('app/monitor/playwright.json');
+        $candidates = [
+            storage_path('app/monitor/playwright.json'),
+            storage_path('app/monitor/playwright-summary.json'),
+        ];
+
+        foreach ($candidates as $candidate) {
+            if (file_exists($candidate)) {
+                return $candidate;
+            }
+        }
+
+        return $candidates[0];
     }
 
     private function tailLogs(): array

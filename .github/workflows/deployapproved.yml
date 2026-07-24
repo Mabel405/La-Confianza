@@ -132,6 +132,9 @@ jobs:
           cd /var/www/html/La-Confianza
 
           mkdir -p storage/app/monitor
+          if [ -f storage/app/monitor/playwright-summary.json ]; then
+            mv storage/app/monitor/playwright-summary.json storage/app/monitor/playwright.json
+          fi
 
           DEPLOY_LOG=storage/app/monitor/deploy.log
           DEPLOY_META=storage/app/monitor/deploy.json
