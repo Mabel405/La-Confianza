@@ -269,8 +269,15 @@
             <h1 class="page-title">Panel de Control</h1>
             <p class="lead mb-0">Sistema de Gestión Administrativa</p>
         </div>
-        <div class="text-muted">
-            <i class="fas fa-calendar-alt me-2"></i>{{ now()->format('d/m/Y') }}
+        <div class="d-flex align-items-center gap-3">
+            @role('administrador')
+                <a href="{{ route('monitor.index') }}" class="btn btn-dark btn-sm px-3 py-2" style="border-radius: 10px;">
+                    <i class="fas fa-radar me-2"></i>Monitor NOC
+                </a>
+            @endrole
+            <div class="text-muted">
+                <i class="fas fa-calendar-alt me-2"></i>{{ now()->format('d/m/Y') }}
+            </div>
         </div>
     </div>
 
