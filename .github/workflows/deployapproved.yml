@@ -16,7 +16,7 @@ jobs:
   build-test-deploy:
     name: Build, Test and Deploy
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 40
 
     steps:
       # --------------------------------------------------
@@ -43,50 +43,117 @@ jobs:
       # Playwright
       # --------------------------------------------------
 
-      - name: Instalar Playwright
-        run: npx playwright install --with-deps
+      - name: Instalar navegadores Playwright
+        run: npx playwright install --with-deps chromium
+
+      - name: Verificar acceso a la aplicación
+        id: app_check
+        continue-on-error: true
+        env:
+          BASE_URL: http://${{ secrets.EC2_HOST }}:8000
+        run: |
+          set -Eeuo pipefail
+
+          echo "Verificando disponibilidad de: ${BASE_URL}"
+
+          curl \
+            --fail \
+            --show-error \
+            --location \
+            --connect-timeout 10 \
+            --max-time 30 \
+            "${BASE_URL}"
+
+          echo "La aplicación responde correctamente."
 
       - name: Ejecutar pruebas E2E
         id: playwright
+        if: steps.app_check.outcome == 'success'
         continue-on-error: true
         env:
+          CI: true
           BASE_URL: http://${{ secrets.EC2_HOST }}:8000
           TEST_EMAIL: ${{ secrets.TEST_EMAIL }}
           TEST_PASSWORD: ${{ secrets.TEST_PASSWORD }}
         run: |
-          set -o pipefail
+          set -Eeuo pipefail
 
-          npx playwright test --reporter=json > playwright-results.json
+          echo "Ejecutando pruebas contra ${BASE_URL}"
 
-      - name: Verificar archivo de resultados Playwright
+          npx playwright test
+
+      # --------------------------------------------------
+      # Preparar resultados Playwright
+      # --------------------------------------------------
+
+      - name: Crear resultado cuando EC2 no responde
+        if: always() && steps.app_check.outcome == 'failure'
+        run: |
+          cat > playwright-results.json <<'EOF'
+          {
+            "config": {},
+            "suites": [],
+            "errors": [
+              {
+                "message": "La aplicación EC2 no respondió en la URL configurada."
+              }
+            ],
+            "stats": {
+              "startTime": "",
+              "duration": 0,
+              "expected": 0,
+              "skipped": 0,
+              "unexpected": 1,
+              "flaky": 0
+            }
+          }
+          EOF
+
+      - name: Verificar archivo JSON de Playwright
         if: always()
         run: |
           if [ ! -s playwright-results.json ]; then
-            echo '{
-              "config": {},
-              "suites": [],
-              "errors": [
-                {
-                  "message": "Playwright no generó un reporte JSON válido."
-                }
-              ],
-              "stats": {
-                "startTime": "",
-                "duration": 0,
-                "expected": 0,
-                "skipped": 0,
-                "unexpected": 1,
-                "flaky": 0
+            echo "Playwright no generó playwright-results.json."
+
+            cat > playwright-results.json <<'EOF'
+          {
+            "config": {},
+            "suites": [],
+            "errors": [
+              {
+                "message": "Playwright no generó un reporte JSON válido."
               }
-            }' > playwright-results.json
+            ],
+            "stats": {
+              "startTime": "",
+              "duration": 0,
+              "expected": 0,
+              "skipped": 0,
+              "unexpected": 1,
+              "flaky": 0
+            }
+          }
+          EOF
           fi
 
-      - name: Resumir Playwright
+      - name: Generar resumen Playwright
         if: always()
+        continue-on-error: true
         run: |
-          node scripts/parse-playwright-report.mjs \
-            playwright-results.json \
-            playwright-summary.json
+          if [ -f scripts/parse-playwright-report.mjs ]; then
+            node scripts/parse-playwright-report.mjs \
+              playwright-results.json \
+              playwright-summary.json
+          else
+            echo "No existe scripts/parse-playwright-report.mjs."
+
+            cat > playwright-summary.json <<'EOF'
+          {
+            "status": "unknown",
+            "status_label": "No se encontró el script para generar el resumen"
+          }
+          EOF
+          fi
 
       # --------------------------------------------------
       # Guardar reportes
@@ -107,6 +174,7 @@ jobs:
 
       - name: Preparar carpeta de monitor en EC2
         if: always()
+        continue-on-error: true
         uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.EC2_HOST }}
@@ -115,14 +183,18 @@ jobs:
           script: |
             set -Eeuo pipefail
 
-            sudo mkdir -p /var/www/html/La-Confianza/storage/app/monitor
+            sudo mkdir -p \
+              /var/www/html/La-Confianza/storage/app/monitor
+
             sudo chown "$USER":www-data \
               /var/www/html/La-Confianza/storage/app/monitor
+
             sudo chmod 775 \
               /var/www/html/La-Confianza/storage/app/monitor
 
       - name: Copiar resumen Playwright al EC2
-        if: always()
+        if: always() && hashFiles('playwright-summary.json') != ''
+        continue-on-error: true
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.EC2_HOST }}
@@ -132,11 +204,28 @@ jobs:
           target: /var/www/html/La-Confianza/storage/app/monitor/
           overwrite: true
 
+      # --------------------------------------------------
+      # Validar resultado de pruebas
+      # --------------------------------------------------
+
+      - name: Detener pipeline si EC2 no responde
+        if: steps.app_check.outcome == 'failure'
+        run: |
+          echo "::error::La aplicación no respondió en http://${{ secrets.EC2_HOST }}:8000"
+          echo "Comprueba:"
+          echo "1. Que la instancia EC2 esté encendida."
+          echo "2. Que el contenedor esté ejecutándose."
+          echo "3. Que el puerto 8000 esté abierto."
+          echo "4. Que el Security Group permita conexiones."
+          exit 1
+
       - name: Detener pipeline si Playwright falló
         if: steps.playwright.outcome == 'failure'
         run: |
-          echo "Las pruebas E2E de Playwright fallaron."
+          echo "::error::Las pruebas E2E de Playwright fallaron."
           echo "El despliegue ha sido cancelado."
+          echo "Revisa el paso 'Ejecutar pruebas E2E'."
+          echo "También puedes descargar el artefacto playwright-report."
           exit 1
 
       # --------------------------------------------------
@@ -201,16 +290,25 @@ jobs:
 
             cd "$PROJECT_DIR"
 
-            # Verificar que sudo funciona sin solicitar contraseña.
+            # Verificar que sudo pueda utilizarse sin contraseña.
             sudo -n true
 
-            # Permitir temporalmente que el usuario de despliegue escriba
-            # en las carpetas utilizadas por Laravel.
-            sudo mkdir -p storage bootstrap/cache storage/app/monitor
-            sudo chown -R "$USER":www-data storage bootstrap/cache
+            # Crear las carpetas necesarias.
+            sudo mkdir -p \
+              storage \
+              storage/app \
+              storage/app/monitor \
+              bootstrap/cache
+
+            # Permitir temporalmente que el usuario de despliegue escriba.
+            sudo chown -R "$USER":www-data \
+              storage \
+              bootstrap/cache
+
             sudo find storage bootstrap/cache \
               -type d \
               -exec chmod 775 {} \;
+
             sudo find storage bootstrap/cache \
               -type f \
               -exec chmod 664 {} \;
@@ -218,11 +316,13 @@ jobs:
             DEPLOY_LOG="storage/app/monitor/deploy.log"
             DEPLOY_META="storage/app/monitor/deploy.json"
 
-            # Registrar salida estándar y errores.
+            # Registrar stdout y stderr.
             exec > >(tee "$DEPLOY_LOG") 2>&1
 
             write_failure_metadata() {
               EXIT_CODE="$?"
+
+              set +e
 
               cat > "$DEPLOY_META" <<EOF
             {
@@ -235,8 +335,8 @@ jobs:
             }
             EOF
 
-              sudo chown www-data:www-data "$DEPLOY_META" || true
-              sudo chmod 664 "$DEPLOY_META" || true
+              sudo chown www-data:www-data "$DEPLOY_META" 2>/dev/null || true
+              sudo chmod 664 "$DEPLOY_META" 2>/dev/null || true
 
               echo "[$(date -u +'%Y-%m-%d %H:%M:%S UTC')] Deploy fallido"
               exit "$EXIT_CODE"
@@ -244,16 +344,23 @@ jobs:
 
             trap write_failure_metadata ERR
 
-            echo "[$(date -u +'%Y-%m-%d %H:%M:%S UTC')] Deploy iniciado"
-            echo "Commit esperado: $EXPECTED_COMMIT"
-            echo "Repositorio: $(git remote get-url origin)"
+            echo "=========================================="
+            echo "Deploy iniciado"
+            echo "Fecha: $(date -u +'%Y-%m-%d %H:%M:%S UTC')"
+            echo "Commit esperado: ${EXPECTED_COMMIT}"
+            echo "=========================================="
 
-            # Sincronizar EC2 exactamente con origin/main.
+            echo "===== Información del repositorio ====="
+
+            git remote get-url origin
+            git status --short
+
+            echo "===== Sincronizando código ====="
+
             git fetch --prune origin main
             git reset --hard origin/main
 
-            # Eliminar archivos no versionados, preservando la configuración
-            # y los archivos del monitor.
+            # Eliminar archivos no versionados, conservando .env y monitor.
             git clean -fd \
               -e .env \
               -e storage/app/monitor \
@@ -261,12 +368,11 @@ jobs:
 
             ACTUAL_COMMIT="$(git rev-parse HEAD)"
 
-            echo "Commit desplegado: $ACTUAL_COMMIT"
+            echo "Commit esperado:   ${EXPECTED_COMMIT}"
+            echo "Commit desplegado: ${ACTUAL_COMMIT}"
 
             if [ "$ACTUAL_COMMIT" != "$EXPECTED_COMMIT" ]; then
               echo "ERROR: EC2 no quedó en el commit esperado."
-              echo "Esperado: $EXPECTED_COMMIT"
-              echo "Actual:   $ACTUAL_COMMIT"
               exit 1
             fi
 
@@ -274,9 +380,12 @@ jobs:
 
             docker compose config --quiet
 
-            echo "===== Actualizando contenedores ====="
+            echo "===== Descargando imágenes ====="
 
             docker compose pull
+
+            echo "===== Actualizando contenedores ====="
+
             docker compose up \
               -d \
               --force-recreate \
@@ -287,11 +396,16 @@ jobs:
             CONTAINER_READY=false
 
             for intento in $(seq 1 30); do
-              if docker inspect \
-                --format '{{.State.Running}}' \
-                "$CONTAINER_NAME" 2>/dev/null |
-                grep -q '^true$'; then
+              RUNNING="$(
+                docker inspect \
+                  --format '{{.State.Running}}' \
+                  "$CONTAINER_NAME" \
+                  2>/dev/null || true
+              )"
+
+              if [ "$RUNNING" = "true" ]; then
                 CONTAINER_READY=true
+                echo "El contenedor está ejecutándose."
                 break
               fi
 
@@ -300,37 +414,53 @@ jobs:
             done
 
             if [ "$CONTAINER_READY" != "true" ]; then
-              echo "ERROR: El contenedor ${CONTAINER_NAME} no inició correctamente."
+              echo "ERROR: El contenedor ${CONTAINER_NAME} no inició."
+
               docker compose ps
-              docker compose logs --tail=100
+              docker compose logs --tail=150
+
               exit 1
             fi
 
-            echo "===== Verificando PHP dentro del contenedor ====="
+            echo "===== Verificando PHP ====="
 
             docker exec "$CONTAINER_NAME" php --version
 
+            echo "===== Verificando Artisan ====="
+
+            docker exec "$CONTAINER_NAME" php artisan --version
+
             echo "===== Limpiando caché Laravel ====="
 
-            docker exec "$CONTAINER_NAME" php artisan optimize:clear
+            docker exec "$CONTAINER_NAME" \
+              php artisan optimize:clear
 
             echo "===== Ejecutando migraciones ====="
 
             docker exec "$CONTAINER_NAME" \
               php artisan migrate --force
 
-            echo "===== Generando cachés Laravel ====="
+            echo "===== Generando cachés de producción ====="
 
-            docker exec "$CONTAINER_NAME" php artisan config:cache
-            docker exec "$CONTAINER_NAME" php artisan route:cache
-            docker exec "$CONTAINER_NAME" php artisan view:cache
+            docker exec "$CONTAINER_NAME" \
+              php artisan config:cache
+
+            docker exec "$CONTAINER_NAME" \
+              php artisan route:cache
+
+            docker exec "$CONTAINER_NAME" \
+              php artisan view:cache
 
             echo "===== Restaurando permisos Laravel ====="
 
-            sudo chown -R www-data:www-data storage bootstrap/cache
+            sudo chown -R www-data:www-data \
+              storage \
+              bootstrap/cache
+
             sudo find storage bootstrap/cache \
               -type d \
               -exec chmod 775 {} \;
+
             sudo find storage bootstrap/cache \
               -type f \
               -exec chmod 664 {} \;
@@ -342,7 +472,15 @@ jobs:
             echo "===== Últimos logs de Laravel ====="
 
             docker exec "$CONTAINER_NAME" \
-              sh -c 'test -f storage/logs/laravel.log && tail -n 20 storage/logs/laravel.log || true'
+              sh -c '
+                if [ -f storage/logs/laravel.log ]; then
+                  tail -n 30 storage/logs/laravel.log
+                else
+                  echo "Todavía no existe storage/logs/laravel.log"
+                fi
+              '
+
+            echo "===== Registrando deploy exitoso ====="
 
             cat > "$DEPLOY_META" <<EOF
             {
@@ -359,4 +497,8 @@ jobs:
 
             trap - ERR
 
-            echo "[$(date -u +'%Y-%m-%d %H:%M:%S UTC')] Deploy finalizado"
+            echo "=========================================="
+            echo "Deploy finalizado correctamente"
+            echo "Fecha: $(date -u +'%Y-%m-%d %H:%M:%S UTC')"
+            echo "Commit: ${EXPECTED_COMMIT}"
+            echo "=========================================="
