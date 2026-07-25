@@ -116,65 +116,52 @@ jobs:
     # ------------------------
 
     - name: Deploy EC2
-      if: ${{ steps.playwright.outcome == 'success' }}
       uses: appleboy/ssh-action@v1.2.0
-
       with:
-
         host: ${{ secrets.EC2_HOST }}
-
         username: ${{ secrets.EC2_USER }}
-
         key: ${{ secrets.EC2_KEY }}
 
         script: |
+          set -Eeuo pipefail
 
           cd /var/www/html/La-Confianza
 
           mkdir -p storage/app/monitor
-          if [ -f storage/app/monitor/playwright-summary.json ]; then
-            mv storage/app/monitor/playwright-summary.json storage/app/monitor/playwright.json
-          fi
 
           DEPLOY_LOG=storage/app/monitor/deploy.log
           DEPLOY_META=storage/app/monitor/deploy.json
 
-          {
-            echo "[$(date -u +'%Y-%m-%d %H:%M:%S UTC')] Deploy iniciado"
-            echo "Branch: main"
+          exec > >(tee "$DEPLOY_LOG") 2>&1
 
-            git pull origin main
+          echo "[$(date -u +'%Y-%m-%d %H:%M:%S UTC')] Deploy iniciado"
+          echo "Commit esperado: ${{ github.sha }}"
+          echo "Repositorio: $(git remote get-url origin)"
 
-            docker pull robertsl/la-confianza:latest
+          git fetch origin main
+          git reset --hard origin/main
 
-            docker compose down
+          ACTUAL_COMMIT="$(git rev-parse HEAD)"
 
-            docker compose up -d
+          echo "Commit desplegado: $ACTUAL_COMMIT"
 
-            docker exec la-confianza php artisan optimize:clear
+          if [ "$ACTUAL_COMMIT" != "${{ github.sha }}" ]; then
+            echo "ERROR: EC2 no quedó en el commit esperado"
+            exit 1
+          fi
 
-            docker image prune -af
+          docker compose pull
+          docker compose up -d --force-recreate --remove-orphans
 
-            docker builder prune -af
+          docker exec la-confianza php artisan optimize:clear
 
-            sudo find /var/lib/docker/containers/ -name "*-json.log" -exec truncate -s 0 {} \;
+          echo "===== Contenedores ====="
+          docker compose ps
 
-            echo "===== Contenedores ====="
+          echo "===== Logs Laravel ====="
+          docker exec la-confianza tail -20 storage/logs/laravel.log || true
 
-            docker ps
-
-            echo "===== Logs Laravel ====="
-
-            docker exec la-confianza tail -20 storage/logs/laravel.log || true
-
-            echo "===== Estado Docker ====="
-
-            docker stats --no-stream
-
-            echo "[$(date -u +'%Y-%m-%d %H:%M:%S UTC')] Deploy finalizado"
-          } | tee "$DEPLOY_LOG"
-
-          cat > "$DEPLOY_META" <<'EOF'
+          cat > "$DEPLOY_META" <<EOF
           {
             "status": "success",
             "status_label": "Deploy aplicado correctamente",
@@ -183,3 +170,5 @@ jobs:
             "updated_at": "${{ github.run_started_at }}"
           }
           EOF
+
+          echo "[$(date -u +'%Y-%m-%d %H:%M:%S UTC')] Deploy finalizado"
