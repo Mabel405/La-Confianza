@@ -5,209 +5,358 @@ on:
     branches:
       - main
 
+permissions:
+  contents: read
+
+concurrency:
+  group: laravel-production-deploy
+  cancel-in-progress: false
+
 jobs:
-
   build-test-deploy:
-
+    name: Build, Test and Deploy
     runs-on: ubuntu-latest
+    timeout-minutes: 30
 
     steps:
+      # --------------------------------------------------
+      # Descargar proyecto
+      # --------------------------------------------------
 
-    # ------------------------
-    # Descargar proyecto
-    # ------------------------
+      - name: Checkout
+        uses: actions/checkout@v4
 
-    - name: Checkout
-      uses: actions/checkout@v4
+      # --------------------------------------------------
+      # Node.js
+      # --------------------------------------------------
 
-    # ------------------------
-    # Node
-    # ------------------------
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
 
-    - name: Setup Node
-      uses: actions/setup-node@v4
-      with:
-        node-version: 22
+      - name: Instalar dependencias Node
+        run: npm ci
 
-    - name: Instalar dependencias Node
-      run: npm install
+      # --------------------------------------------------
+      # Playwright
+      # --------------------------------------------------
 
-    # ------------------------
-    # Playwright
-    # ------------------------
+      - name: Instalar Playwright
+        run: npx playwright install --with-deps
 
-    - name: Instalar Playwright
-      run: npx playwright install --with-deps
+      - name: Ejecutar pruebas E2E
+        id: playwright
+        continue-on-error: true
+        env:
+          BASE_URL: http://${{ secrets.EC2_HOST }}:8000
+          TEST_EMAIL: ${{ secrets.TEST_EMAIL }}
+          TEST_PASSWORD: ${{ secrets.TEST_PASSWORD }}
+        run: |
+          set -o pipefail
 
-    - name: Ejecutar pruebas E2E
-      id: playwright
-      continue-on-error: true
-      env:
-        BASE_URL: http://${{ secrets.EC2_HOST }}:8000
-        TEST_EMAIL: ${{ secrets.TEST_EMAIL }}
-        TEST_PASSWORD: ${{ secrets.TEST_PASSWORD }}
-      run: |
-        npx playwright test --reporter=json > playwright-results.json
+          npx playwright test --reporter=json > playwright-results.json
 
-    - name: Resumir Playwright
-      if: always()
-      run: |
-        node scripts/parse-playwright-report.mjs playwright-results.json playwright-summary.json
+      - name: Verificar archivo de resultados Playwright
+        if: always()
+        run: |
+          if [ ! -s playwright-results.json ]; then
+            echo '{
+              "config": {},
+              "suites": [],
+              "errors": [
+                {
+                  "message": "Playwright no generó un reporte JSON válido."
+                }
+              ],
+              "stats": {
+                "startTime": "",
+                "duration": 0,
+                "expected": 0,
+                "skipped": 0,
+                "unexpected": 1,
+                "flaky": 0
+              }
+            }' > playwright-results.json
+          fi
 
-    # ------------------------
-    # Guardar reporte
-    # ------------------------
+      - name: Resumir Playwright
+        if: always()
+        run: |
+          node scripts/parse-playwright-report.mjs \
+            playwright-results.json \
+            playwright-summary.json
 
-    - name: Subir reporte Playwright
-      if: always()
-      uses: actions/upload-artifact@v4
-      with:
-        name: playwright-report
-        path: playwright-report/
+      # --------------------------------------------------
+      # Guardar reportes
+      # --------------------------------------------------
 
-    - name: Preparar carpeta de monitor en EC2
-      if: always()
-      uses: appleboy/ssh-action@v1.2.0
-      with:
-        host: ${{ secrets.EC2_HOST }}
-        username: ${{ secrets.EC2_USER }}
-        key: ${{ secrets.EC2_KEY }}
-        script: |
-          mkdir -p /var/www/html/La-Confianza/storage/app/monitor
+      - name: Subir reportes Playwright
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-${{ github.run_number }}
+          if-no-files-found: warn
+          retention-days: 14
+          path: |
+            playwright-results.json
+            playwright-summary.json
+            playwright-report/
+            test-results/
 
-    - name: Copiar resumen Playwright al EC2
-      if: always()
-      uses: appleboy/scp-action@v0.1.7
-      with:
-        host: ${{ secrets.EC2_HOST }}
-        username: ${{ secrets.EC2_USER }}
-        key: ${{ secrets.EC2_KEY }}
-        source: playwright-summary.json
-        target: /var/www/html/La-Confianza/storage/app/monitor/
+      - name: Preparar carpeta de monitor en EC2
+        if: always()
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_KEY }}
+          script: |
+            set -Eeuo pipefail
 
-    # ------------------------
-    # Docker Login
-    # ------------------------
+            sudo mkdir -p /var/www/html/La-Confianza/storage/app/monitor
+            sudo chown "$USER":www-data \
+              /var/www/html/La-Confianza/storage/app/monitor
+            sudo chmod 775 \
+              /var/www/html/La-Confianza/storage/app/monitor
 
-    - name: Login Docker Hub
-      uses: docker/login-action@v3
-      with:
-        username: ${{ secrets.DOCKER_USERNAME }}
-        password: ${{ secrets.DOCKER_TOKEN }}
+      - name: Copiar resumen Playwright al EC2
+        if: always()
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_KEY }}
+          source: playwright-summary.json
+          target: /var/www/html/La-Confianza/storage/app/monitor/
+          overwrite: true
 
-    # ------------------------
-    # Build
-    # ------------------------
-
-    - name: Build Docker Image
-      run: |
-        docker build -t robertsl/la-confianza:latest .
-
-    # ------------------------
-    # Push Docker Hub
-    # ------------------------
-
-    - name: Push Docker Hub
-      run: |
-        docker push robertsl/la-confianza:latest
-
-    # ------------------------
-    # Deploy EC2
-    # ------------------------
-
-    - name: Deploy EC2
-      uses: appleboy/ssh-action@v1.2.0
-      with:
-        host: ${{ secrets.EC2_HOST }}
-        username: ${{ secrets.EC2_USER }}
-        key: ${{ secrets.EC2_KEY }}
-
-      script: |
-        set -Eeuo pipefail
-
-        cd /var/www/html/La-Confianza
-
-        # Verificar que sudo pueda ejecutarse sin solicitar contraseña
-        sudo -n true
-
-        # Permitir que el usuario de despliegue actualice archivos creados por Laravel
-        sudo chown -R "$USER":www-data storage bootstrap/cache
-        sudo find storage bootstrap/cache -type d -exec chmod 775 {} \;
-        sudo find storage bootstrap/cache -type f -exec chmod 664 {} \;
-
-        mkdir -p storage/app/monitor
-
-        DEPLOY_LOG="storage/app/monitor/deploy.log"
-        DEPLOY_META="storage/app/monitor/deploy.json"
-
-        # Registrar salida estándar y errores
-        exec > >(tee "$DEPLOY_LOG") 2>&1
-
-        echo "[$(date -u +'%Y-%m-%d %H:%M:%S UTC')] Deploy iniciado"
-        echo "Commit esperado: ${{ github.sha }}"
-        echo "Repositorio: $(git remote get-url origin)"
-
-        # Sincronizar EC2 exactamente con origin/main
-        git fetch origin main
-        git reset --hard origin/main
-        git clean -fd -e .env -e storage/app/monitor/
-
-        ACTUAL_COMMIT="$(git rev-parse HEAD)"
-
-        echo "Commit desplegado: $ACTUAL_COMMIT"
-
-        if [ "$ACTUAL_COMMIT" != "${{ github.sha }}" ]; then
-          echo "ERROR: EC2 no quedó en el commit esperado"
-          echo "Esperado: ${{ github.sha }}"
-          echo "Actual:   $ACTUAL_COMMIT"
+      - name: Detener pipeline si Playwright falló
+        if: steps.playwright.outcome == 'failure'
+        run: |
+          echo "Las pruebas E2E de Playwright fallaron."
+          echo "El despliegue ha sido cancelado."
           exit 1
-        fi
 
-        echo "===== Actualizando contenedores ====="
+      # --------------------------------------------------
+      # Docker Login
+      # --------------------------------------------------
 
-        docker compose pull
-        docker compose up -d --force-recreate --remove-orphans
+      - name: Login Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_TOKEN }}
 
-        echo "===== Esperando contenedor Laravel ====="
+      # --------------------------------------------------
+      # Build Docker
+      # --------------------------------------------------
 
-        for intento in {1..15}; do
-          if docker inspect -f '{{.State.Running}}' la-confianza 2>/dev/null | grep -q true; then
-            break
-          fi
+      - name: Build Docker Image
+        env:
+          IMAGE_NAME: robertsl/la-confianza
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          set -Eeuo pipefail
 
-          if [ "$intento" -eq 15 ]; then
-            echo "ERROR: El contenedor la-confianza no inició correctamente"
+          docker build \
+            --tag "${IMAGE_NAME}:${IMAGE_TAG}" \
+            --tag "${IMAGE_NAME}:latest" \
+            .
+
+      # --------------------------------------------------
+      # Push Docker Hub
+      # --------------------------------------------------
+
+      - name: Push Docker Hub
+        env:
+          IMAGE_NAME: robertsl/la-confianza
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          set -Eeuo pipefail
+
+          docker push "${IMAGE_NAME}:${IMAGE_TAG}"
+          docker push "${IMAGE_NAME}:latest"
+
+      # --------------------------------------------------
+      # Deploy EC2
+      # --------------------------------------------------
+
+      - name: Deploy EC2
+        uses: appleboy/ssh-action@v1.2.0
+        env:
+          EXPECTED_COMMIT: ${{ github.sha }}
+          RUN_STARTED_AT: ${{ github.run_started_at }}
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_KEY }}
+          envs: EXPECTED_COMMIT,RUN_STARTED_AT
+          script: |
+            set -Eeuo pipefail
+
+            PROJECT_DIR="/var/www/html/La-Confianza"
+            CONTAINER_NAME="la-confianza"
+
+            cd "$PROJECT_DIR"
+
+            # Verificar que sudo funciona sin solicitar contraseña.
+            sudo -n true
+
+            # Permitir temporalmente que el usuario de despliegue escriba
+            # en las carpetas utilizadas por Laravel.
+            sudo mkdir -p storage bootstrap/cache storage/app/monitor
+            sudo chown -R "$USER":www-data storage bootstrap/cache
+            sudo find storage bootstrap/cache \
+              -type d \
+              -exec chmod 775 {} \;
+            sudo find storage bootstrap/cache \
+              -type f \
+              -exec chmod 664 {} \;
+
+            DEPLOY_LOG="storage/app/monitor/deploy.log"
+            DEPLOY_META="storage/app/monitor/deploy.json"
+
+            # Registrar salida estándar y errores.
+            exec > >(tee "$DEPLOY_LOG") 2>&1
+
+            write_failure_metadata() {
+              EXIT_CODE="$?"
+
+              cat > "$DEPLOY_META" <<EOF
+            {
+              "status": "failure",
+              "status_label": "El despliegue falló",
+              "branch": "main",
+              "commit": "${EXPECTED_COMMIT}",
+              "updated_at": "${RUN_STARTED_AT}",
+              "exit_code": ${EXIT_CODE}
+            }
+            EOF
+
+              sudo chown www-data:www-data "$DEPLOY_META" || true
+              sudo chmod 664 "$DEPLOY_META" || true
+
+              echo "[$(date -u +'%Y-%m-%d %H:%M:%S UTC')] Deploy fallido"
+              exit "$EXIT_CODE"
+            }
+
+            trap write_failure_metadata ERR
+
+            echo "[$(date -u +'%Y-%m-%d %H:%M:%S UTC')] Deploy iniciado"
+            echo "Commit esperado: $EXPECTED_COMMIT"
+            echo "Repositorio: $(git remote get-url origin)"
+
+            # Sincronizar EC2 exactamente con origin/main.
+            git fetch --prune origin main
+            git reset --hard origin/main
+
+            # Eliminar archivos no versionados, preservando la configuración
+            # y los archivos del monitor.
+            git clean -fd \
+              -e .env \
+              -e storage/app/monitor \
+              -e storage/app/monitor/
+
+            ACTUAL_COMMIT="$(git rev-parse HEAD)"
+
+            echo "Commit desplegado: $ACTUAL_COMMIT"
+
+            if [ "$ACTUAL_COMMIT" != "$EXPECTED_COMMIT" ]; then
+              echo "ERROR: EC2 no quedó en el commit esperado."
+              echo "Esperado: $EXPECTED_COMMIT"
+              echo "Actual:   $ACTUAL_COMMIT"
+              exit 1
+            fi
+
+            echo "===== Validando Docker Compose ====="
+
+            docker compose config --quiet
+
+            echo "===== Actualizando contenedores ====="
+
+            docker compose pull
+            docker compose up \
+              -d \
+              --force-recreate \
+              --remove-orphans
+
+            echo "===== Esperando contenedor Laravel ====="
+
+            CONTAINER_READY=false
+
+            for intento in $(seq 1 30); do
+              if docker inspect \
+                --format '{{.State.Running}}' \
+                "$CONTAINER_NAME" 2>/dev/null |
+                grep -q '^true$'; then
+                CONTAINER_READY=true
+                break
+              fi
+
+              echo "Intento ${intento}/30: esperando contenedor..."
+              sleep 2
+            done
+
+            if [ "$CONTAINER_READY" != "true" ]; then
+              echo "ERROR: El contenedor ${CONTAINER_NAME} no inició correctamente."
+              docker compose ps
+              docker compose logs --tail=100
+              exit 1
+            fi
+
+            echo "===== Verificando PHP dentro del contenedor ====="
+
+            docker exec "$CONTAINER_NAME" php --version
+
+            echo "===== Limpiando caché Laravel ====="
+
+            docker exec "$CONTAINER_NAME" php artisan optimize:clear
+
+            echo "===== Ejecutando migraciones ====="
+
+            docker exec "$CONTAINER_NAME" \
+              php artisan migrate --force
+
+            echo "===== Generando cachés Laravel ====="
+
+            docker exec "$CONTAINER_NAME" php artisan config:cache
+            docker exec "$CONTAINER_NAME" php artisan route:cache
+            docker exec "$CONTAINER_NAME" php artisan view:cache
+
+            echo "===== Restaurando permisos Laravel ====="
+
+            sudo chown -R www-data:www-data storage bootstrap/cache
+            sudo find storage bootstrap/cache \
+              -type d \
+              -exec chmod 775 {} \;
+            sudo find storage bootstrap/cache \
+              -type f \
+              -exec chmod 664 {} \;
+
+            echo "===== Estado de contenedores ====="
+
             docker compose ps
-            docker compose logs --tail=100
-            exit 1
-          fi
 
-          sleep 2
-        done
+            echo "===== Últimos logs de Laravel ====="
 
-        echo "===== Limpiando caché Laravel ====="
+            docker exec "$CONTAINER_NAME" \
+              sh -c 'test -f storage/logs/laravel.log && tail -n 20 storage/logs/laravel.log || true'
 
-        docker exec la-confianza php artisan optimize:clear
+            cat > "$DEPLOY_META" <<EOF
+            {
+              "status": "success",
+              "status_label": "Deploy aplicado correctamente",
+              "branch": "main",
+              "commit": "${EXPECTED_COMMIT}",
+              "updated_at": "${RUN_STARTED_AT}"
+            }
+            EOF
 
-        # Restaurar permisos necesarios para Laravel
-        sudo chown -R www-data:www-data storage bootstrap/cache
-        sudo find storage bootstrap/cache -type d -exec chmod 775 {} \;
-        sudo find storage bootstrap/cache -type f -exec chmod 664 {} \;
+            sudo chown www-data:www-data "$DEPLOY_META"
+            sudo chmod 664 "$DEPLOY_META"
 
-        echo "===== Contenedores ====="
-        docker compose ps
+            trap - ERR
 
-        echo "===== Logs Laravel ====="
-        docker exec la-confianza tail -20 storage/logs/laravel.log || true
-
-        cat > "$DEPLOY_META" <<EOF
-        {
-          "status": "success",
-          "status_label": "Deploy aplicado correctamente",
-          "branch": "main",
-          "commit": "${{ github.sha }}",
-          "updated_at": "${{ github.run_started_at }}"
-        }
-        EOF
-
-        echo "[$(date -u +'%Y-%m-%d %H:%M:%S UTC')] Deploy finalizado"
+            echo "[$(date -u +'%Y-%m-%d %H:%M:%S UTC')] Deploy finalizado"
