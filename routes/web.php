@@ -21,6 +21,8 @@ Route::get('/', [HomeController::class,'index'])->name('panel');
 Route::middleware('auth')->group(function () {
     Route::get('/dashboard/monitor', [MonitorController::class, 'index'])->name('monitor.index');
     Route::get('/dashboard/monitor/data', [MonitorController::class, 'data'])->name('monitor.data');
+    Route::post('/dashboard/monitor/backup', [MonitorController::class, 'backup'])->name('monitor.backup');
+    Route::get('/dashboard/monitor/logs/download', [MonitorController::class, 'downloadLogs'])->name('monitor.logs.download');
     Route::get('/dashboard/monitor/backup/download', [MonitorController::class, 'downloadLatestBackup'])->name('monitor.backup.download');
 });
 

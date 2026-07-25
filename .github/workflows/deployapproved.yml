@@ -189,7 +189,7 @@ jobs:
             sudo chown "$USER":www-data \
               /var/www/html/La-Confianza/storage/app/monitor
 
-            sudo chmod 775 \
+            sudo chmod 2775 \
               /var/www/html/La-Confianza/storage/app/monitor
 
       - name: Copiar resumen Playwright al EC2
@@ -307,7 +307,7 @@ jobs:
 
             sudo find storage bootstrap/cache \
               -type d \
-              -exec chmod 775 {} \;
+              -exec chmod 2775 {} \;
 
             sudo find storage bootstrap/cache \
               -type f \
@@ -316,15 +316,18 @@ jobs:
             DEPLOY_LOG="storage/app/monitor/deploy.log"
             DEPLOY_META="storage/app/monitor/deploy.json"
 
-            # Registrar stdout y stderr.
-            exec > >(tee "$DEPLOY_LOG") 2>&1
+            # El log se abre con sudo para conservar acceso al registrar fallos.
+            sudo touch "$DEPLOY_LOG"
+            sudo chown "$USER":www-data "$DEPLOY_LOG"
+            sudo chmod 664 "$DEPLOY_LOG"
+            exec > >(sudo tee "$DEPLOY_LOG") 2>&1
 
             write_failure_metadata() {
               EXIT_CODE="$?"
 
               set +e
 
-              cat > "$DEPLOY_META" <<EOF
+              sudo tee "$DEPLOY_META" > /dev/null <<EOF
             {
               "status": "failure",
               "status_label": "El despliegue falló",
@@ -459,7 +462,7 @@ jobs:
 
             sudo find storage bootstrap/cache \
               -type d \
-              -exec chmod 775 {} \;
+              -exec chmod 2775 {} \;
 
             sudo find storage bootstrap/cache \
               -type f \
@@ -482,7 +485,7 @@ jobs:
 
             echo "===== Registrando deploy exitoso ====="
 
-            cat > "$DEPLOY_META" <<EOF
+            sudo tee "$DEPLOY_META" > /dev/null <<EOF
             {
               "status": "success",
               "status_label": "Deploy aplicado correctamente",

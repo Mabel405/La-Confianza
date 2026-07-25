@@ -111,6 +111,17 @@ class MonitorController extends Controller
         ]);
     }
 
+    public function downloadLogs()
+    {
+        $path = $this->latestLaravelLogPath();
+
+        if ($path === null || ! is_readable($path)) {
+            return response()->json(['ok' => false, 'message' => 'No hay registros disponibles para descargar.'], 404);
+        }
+
+        return response()->download($path, basename($path), ['Content-Type' => 'text/plain; charset=UTF-8']);
+    }
+
     private function snapshot(): array
     {
         $database = $this->databaseStatus();
@@ -128,6 +139,7 @@ class MonitorController extends Controller
             'disk' => $disk,
             'response_time_ms' => $database['response_time_ms'],
             'logs' => $this->tailLogs(),
+            'log_file' => $this->latestLaravelLogName(),
             'deploy' => $this->deploySnapshot(),
             'playwright' => $this->playwrightSnapshot(),
             'errors_count' => $this->errorCount(),
@@ -343,28 +355,58 @@ class MonitorController extends Controller
 
     private function tailLogs(): array
     {
-        $path = storage_path('logs/laravel.log');
-
-        if (! file_exists($path)) {
-            return [];
-        }
-
-        $lines = file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
-
-        return array_slice($lines ?: [], -12);
+        return $this->tailFile($this->latestLaravelLogPath(), 80_000, 80);
     }
 
     private function tailDeployLogs(): array
     {
-        $path = $this->deployLogPath();
+        return $this->tailFile($this->deployLogPath(), 50_000, 80);
+    }
 
-        if (! file_exists($path)) {
+    private function latestLaravelLogPath(): ?string
+    {
+        $files = array_filter(glob(storage_path('logs/laravel*.log')) ?: [], fn ($path) => is_file($path) && is_readable($path));
+
+        if ($files === []) {
+            return null;
+        }
+
+        usort($files, fn ($left, $right) => (filemtime($right) ?: 0) <=> (filemtime($left) ?: 0));
+
+        return $files[0];
+    }
+
+    private function latestLaravelLogName(): ?string
+    {
+        $path = $this->latestLaravelLogPath();
+
+        return $path === null ? null : basename($path);
+    }
+
+    private function tailFile(?string $path, int $maxBytes, int $maxLines): array
+    {
+        if ($path === null || ! is_readable($path)) {
             return [];
         }
 
-        $lines = file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+        $size = filesize($path);
+        if ($size === false || $size === 0 || ($handle = fopen($path, 'rb')) === false) {
+            return [];
+        }
 
-        return array_slice($lines ?: [], -20);
+        try {
+            fseek($handle, max(0, $size - $maxBytes));
+            $contents = stream_get_contents($handle);
+        } finally {
+            fclose($handle);
+        }
+
+        $lines = preg_split('/\r\n|\r|\n/', (string) $contents) ?: [];
+        if ($size > $maxBytes) {
+            array_shift($lines);
+        }
+
+        return array_slice(array_values(array_filter($lines, fn ($line) => $line !== '')), -$maxLines);
     }
 
     private function deploySnapshot(): array

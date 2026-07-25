@@ -233,7 +233,13 @@
         </div>
         <div class="col-12 col-xl-7">
             <div class="glass p-3 h-100">
-                <div class="section-title mb-3">Ultimos errores y eventos</div>
+                <div class="d-flex justify-content-between align-items-center mb-3 gap-2">
+                    <div>
+                        <div class="section-title">Registros de Laravel</div>
+                        <div id="logFileName" class="small-muted">{{ $metrics['log_file'] ?? 'Sin archivo de logs' }}</div>
+                    </div>
+                    <a href="{{ route('monitor.logs.download') }}" class="btn btn-outline-light btn-sm">Descargar registros</a>
+                </div>
                 <div id="logsPanel" class="log-box">{{ implode("\n", $metrics['logs'] ?? []) ?: 'Sin errores recientes.' }}</div>
             </div>
         </div>
@@ -467,6 +473,7 @@
         document.getElementById('hostOs').textContent = data.server?.os || 'N/A';
         document.getElementById('sessionsValue').textContent = data.sessions_active === null || data.sessions_active === undefined ? 'N/A' : data.sessions_active;
         document.getElementById('errorsCount').textContent = data.errors_count ?? 0;
+        document.getElementById('logFileName').textContent = data.log_file || 'Sin archivo de logs';
         renderLogs(data.logs || []);
         document.getElementById('deployStatus').textContent = data.deploy?.label || 'Sin despliegue registrado';
         document.getElementById('deployUpdatedAt').textContent = data.deploy?.updated_at || 'Sin sincronizar';
